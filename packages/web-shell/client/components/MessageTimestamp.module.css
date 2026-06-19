@@ -14,7 +14,16 @@
   top: 2px;
   right: 4px;
   z-index: 5;
+  /* Sits as a small chip so it stays legible when it overlaps a long first
+     line: a translucent, blurred fill of the surface masks the text beneath
+     while keeping the timestamp visually light. */
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--app-bg) 86%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   color: var(--text-dimmed);
+  font-family: var(--font-sans);
   font-size: 11px;
   line-height: 1.4;
   white-space: nowrap;
