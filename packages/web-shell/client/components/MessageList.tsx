@@ -578,14 +578,17 @@ export function applyTurnCollapse(
     // streaming, collapsed once complete (the whole turn stays open until the
     // response finishes — folding mid-stream churns the virtualized layout). A
     // step-less turn (e.g. a plain "hi" reply) has nothing to fold, so it stays
-    // expanded and shows a chevron-less metrics line. An explicit user toggle
-    // always wins.
+    // expanded and shows a chevron-less metrics line. A turn that drawered any
+    // key row (an error, cancellation, or shell/system output — `noteCount`)
+    // also defaults to expanded so that out-of-band output is never hidden
+    // behind the fold; the user can still collapse it by hand. An explicit user
+    // toggle always wins.
     const expanded =
       drawerCount === 0
         ? true
         : overrides.has(turnId)
           ? (overrides.get(turnId) as boolean)
-          : isActiveTurn;
+          : isActiveTurn || noteCount > 0;
     const collapsed = !expanded;
 
     result.push({
@@ -696,6 +699,12 @@ const ESTIMATE_MESSAGE = 80;
 const ESTIMATE_APPROVAL = 200;
 const ESTIMATE_TAIL = 240;
 export const VIRTUAL_SCROLL_THRESHOLD = 200;
+
+// Mac laptops lack a dedicated End key (it's Fn+→), and ⌘↓ is the native
+// "jump to end" gesture — so the jump-to-bottom shortcut and its hint adapt.
+const IS_MAC =
+  typeof navigator !== 'undefined' &&
+  /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent);
 
 export function shouldUseVirtualScroll(
   totalCount: number,
@@ -885,6 +894,16 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
     const prevHasTailContent = useRef(false);
     catchingUpRef.current = catchingUp;
 
+    // "Jump to bottom" pill: shown when the user has scrolled away from the
+    // tail. While away, new messages are tallied (`unseenCount`) so the pill can
+    // read "N new messages" and the reader knows there's fresh output below.
+    const [showJumpButton, setShowJumpButton] = useState(false);
+    const [unseenCount, setUnseenCount] = useState(0);
+    // Message count last seen at the bottom; the baseline for unseen tallying.
+    const seenLenRef = useRef(messages.length);
+    const messagesLenRef = useRef(messages.length);
+    messagesLenRef.current = messages.length;
+
     const hasTailApproval = useMemo(() => {
       if (!pendingApproval) return false;
       if (isAskUserQuestion(pendingApproval)) return true;
@@ -946,6 +965,16 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
       });
     }, []);
 
+    // Re-engage follow, clear the unseen tally, and snap to the tail. Used by
+    // the jump-to-bottom pill and the Ctrl+End shortcut.
+    const handleJumpToBottom = useCallback(() => {
+      shouldFollow.current = true;
+      seenLenRef.current = messagesLenRef.current;
+      setUnseenCount(0);
+      setShowJumpButton(false);
+      scrollToBottom();
+    }, [scrollToBottom]);
+
     const virtualizer = useVirtualizer({
       count: totalCount,
       enabled: useVirtualScroll,
@@ -968,7 +997,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
     // viewport once its real row has scrolled off, as a context anchor. Rendered
     // as an overlay OUTSIDE the scroll flow (not a sticky child) so it never
     // shifts the virtualizer's measured offsets.
-    const stickyRef = useRef<HTMLButtonElement>(null);
+    const stickyRef = useRef<HTMLDivElement>(null);
     const [stickyTurn, setStickyTurn] = useState<{
       turnId: string;
       text: string;
@@ -1067,6 +1096,23 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
           ?.scrollIntoView({ block: 'start' });
       }
     }, [stickyTurn, useVirtualScroll, virtualizer]);
+
+    // The pinned process bar mirrors the inline one: clicking its label both
+    // jumps to the turn and force-expands its drawer, so the steps are open when
+    // you arrive. Clicking elsewhere on the bar only jumps (handleStickyClick).
+    const handleStickyExpand = useCallback(() => {
+      const target = stickyTurn;
+      if (!target) return;
+      // Reading history, not following the tail (mirror handleToggleCollapse).
+      shouldFollow.current = false;
+      setCollapseOverrides((prev) => {
+        if (prev.get(target.turnId) === true) return prev;
+        const next = new Map(prev);
+        next.set(target.turnId, true);
+        return next;
+      });
+      handleStickyClick();
+    }, [stickyTurn, handleStickyClick]);
 
     // Imperative scroll-to-message (e.g. the floating TodoPanel's "show in
     // transcript" button) with a brief highlight on the target row.
@@ -1192,6 +1238,15 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
       if (distanceFromBottom < 30) {
         shouldFollow.current = true;
       }
+      // Jump-to-bottom pill: visible once meaningfully scrolled up. Arriving
+      // near the tail clears the unseen tally and the baseline so the next
+      // scroll-away counts only genuinely new output.
+      const nearBottom = distanceFromBottom < 40;
+      setShowJumpButton((prev) => (prev === !nearBottom ? prev : !nearBottom));
+      if (nearBottom) {
+        seenLenRef.current = messagesLenRef.current;
+        setUnseenCount((c) => (c === 0 ? c : 0));
+      }
       refreshStickyRef.current();
     }, []);
 
@@ -1203,8 +1258,52 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
         shouldFollow.current = true;
         pendingScrollRef.current = null;
         setCollapseOverrides((prev) => (prev.size ? new Map() : prev));
+        seenLenRef.current = 0;
+        setUnseenCount(0);
+        setShowJumpButton(false);
       }
     }, [messages.length]);
+
+    // Tally messages that arrive while the user is reading history (follow
+    // paused). At the tail the baseline tracks the live count, so nothing is
+    // marked unseen; scrolled away, each newly appended message bumps the count.
+    useEffect(() => {
+      if (shouldFollow.current) {
+        seenLenRef.current = messages.length;
+        return;
+      }
+      if (messages.length > seenLenRef.current) {
+        const delta = messages.length - seenLenRef.current;
+        seenLenRef.current = messages.length;
+        setUnseenCount((c) => c + delta);
+      }
+    }, [messages]);
+
+    // Jump-to-bottom shortcut, matching the pill's hint: ⌘↓ on Mac (no End key
+    // on laptops), Ctrl/Cmd+End elsewhere. Skipped while typing in a field so it
+    // never steals the editor's own cursor-to-end navigation.
+    useEffect(() => {
+      const onKeyDown = (e: KeyboardEvent) => {
+        const el = e.target as HTMLElement | null;
+        if (
+          el &&
+          (el.isContentEditable ||
+            el.tagName === 'INPUT' ||
+            el.tagName === 'TEXTAREA' ||
+            el.tagName === 'SELECT')
+        ) {
+          return;
+        }
+        const isEnd = e.key === 'End' && (e.ctrlKey || e.metaKey);
+        const isCmdDown = IS_MAC && e.metaKey && e.key === 'ArrowDown';
+        if (isEnd || isCmdDown) {
+          e.preventDefault();
+          handleJumpToBottom();
+        }
+      };
+      window.addEventListener('keydown', onKeyDown);
+      return () => window.removeEventListener('keydown', onKeyDown);
+    }, [handleJumpToBottom]);
 
     // Container-resize guard: when floating panels (e.g. TodoPanel)
     // appear or disappear the scroll container's clientHeight changes.
@@ -1408,12 +1507,19 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
               (!!(c.summary && Object.keys(c.summary).length) || !!c.noteCount);
             const m = c ? metricsText(c, c.elapsedMs, t) : '';
             return (
-              <button
+              <div
                 ref={stickyRef}
-                type="button"
+                role="button"
+                tabIndex={0}
                 className={styles.stickyTurn}
                 style={stickyPush ? { top: `${-stickyPush}px` } : undefined}
                 onClick={handleStickyClick}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleStickyClick();
+                  }
+                }}
                 title={stickyTurn.text}
                 aria-label={`${t('turn.jumpToPrompt')}: ${stickyTurn.text}`}
               >
@@ -1429,9 +1535,17 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
                 </span>
                 {hasProcess && c && (
                   <span className={styles.stickyProcess}>
-                    <span className={styles.stickyProcessLabel}>
+                    <button
+                      type="button"
+                      className={styles.stickyProcessLabel}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStickyExpand();
+                      }}
+                      aria-label={`${t('turn.expand')} · ${processLabel(c, t)}`}
+                    >
                       {processLabel(c, t)}
-                    </span>
+                    </button>
                     {m && (
                       <span
                         className={`${styles.stickyMetrics} ${styles.stickyMetricsRight}`}
@@ -1441,7 +1555,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
                     )}
                   </span>
                 )}
-              </button>
+              </div>
             );
           })()}
         <div ref={containerRef} className={styles.list} onScroll={handleScroll}>
@@ -1490,6 +1604,25 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
             })
           )}
         </div>
+        {showJumpButton && (
+          <button
+            type="button"
+            className={styles.jumpToBottom}
+            onClick={handleJumpToBottom}
+          >
+            <span className={styles.jumpToBottomLabel}>
+              {unseenCount > 0
+                ? t('scroll.newMessages', { count: unseenCount })
+                : t('scroll.toBottom')}
+            </span>
+            <span className={styles.jumpToBottomHint} aria-hidden="true">
+              {IS_MAC ? ' ⌘↓' : ' (ctrl+End)'}
+            </span>
+            {/* Mac's ⌘↓ already carries the down-arrow; only add a standalone
+                affordance arrow on platforms whose hint has none. */}
+            {!IS_MAC && <span aria-hidden="true">↓</span>}
+          </button>
+        )}
       </div>
     );
   },

@@ -603,7 +603,7 @@ describe('applyTurnCollapse', () => {
     expect(messageRow(out[1]).collapse?.collapsed).toBe(true);
   });
 
-  it('folds system rows (errors/output) into the drawer and counts them as notes', () => {
+  it('defaults a turn with a key (system/error) row to expanded so it stays visible', () => {
     const items = groupParallelAgents([
       makeUserMessage('u1'),
       makeMultiToolGroup('g1'),
@@ -611,24 +611,40 @@ describe('applyTurnCollapse', () => {
       makeAssistantMessage('a1'),
     ]);
     const out = collapseItems(items);
-    // The drawer model folds everything but the final answer; the system row
-    // tucks into the drawer and is flagged via noteCount so the summary can hint
-    // the drawer holds more than routine steps.
-    expect(rowIds(out)).toEqual(['u1', 'a1']);
+    // A drawered key row (noteCount > 0) keeps the turn expanded by default, so
+    // the error/output is never hidden behind the fold. The toggle still appears
+    // (hiddenCount/noteCount tagged) so the user can collapse it by hand.
+    expect(rowIds(out)).toEqual(['u1', 'g1', 's1', 'a1']);
+    expect(messageRow(out[0]).collapse?.collapsed).toBe(false);
     expect(messageRow(out[0]).collapse?.hiddenCount).toBe(2);
     expect(messageRow(out[0]).collapse?.noteCount).toBe(1);
   });
 
-  it('collapses a turn whose only response is a system row, noting it', () => {
+  it('collapses a key-row turn only when explicitly toggled', () => {
+    const items = groupParallelAgents([
+      makeUserMessage('u1'),
+      makeMultiToolGroup('g1'),
+      makeSystemMessage('s1'),
+      makeAssistantMessage('a1'),
+    ]);
+    const out = collapseItems(items, { overrides: new Map([['u1', false]]) });
+    // Manual collapse wins over the key-row default: only prompt + final answer
+    // remain; the system row folds into the drawer, surfaced by the note badge.
+    expect(rowIds(out)).toEqual(['u1', 'a1']);
+    expect(messageRow(out[0]).collapse?.collapsed).toBe(true);
+    expect(messageRow(out[0]).collapse?.noteCount).toBe(1);
+  });
+
+  it('keeps a lone system-row turn expanded so the row stays visible', () => {
     const items = groupParallelAgents([
       makeUserMessage('u1'),
       makeSystemMessage('s1'),
     ]);
     const out = collapseItems(items);
-    // No final answer: the lone system row folds into the drawer behind the
-    // prompt, surfaced by the note badge.
-    expect(rowIds(out)).toEqual(['u1']);
-    expect(messageRow(out[0]).collapse?.collapsed).toBe(true);
+    // No final answer, but the key row defaults the turn to expanded rather than
+    // folding the lone error/output away behind the prompt.
+    expect(rowIds(out)).toEqual(['u1', 's1']);
+    expect(messageRow(out[0]).collapse?.collapsed).toBe(false);
     expect(messageRow(out[0]).collapse?.hiddenCount).toBe(1);
     expect(messageRow(out[0]).collapse?.noteCount).toBe(1);
   });

@@ -785,6 +785,11 @@ const EN: Messages = {
   'turn.kind.plan': 'plans',
   'turn.kind.note': 'notes',
   'turn.jumpToPrompt': 'Jump to this prompt',
+  'scroll.toBottom': 'Jump to bottom',
+  'scroll.newMessages': (v) => {
+    const n = Number(v?.count ?? 0);
+    return n === 1 ? '1 new message' : `${n} new messages`;
+  },
   'tasks.title': 'Background tasks',
   'tasks.empty': 'No tasks currently running',
   'tasks.refreshStale': 'Task status may be stale; reconnecting...',
@@ -1611,6 +1616,8 @@ const ZH: Messages = {
   'turn.kind.plan': '计划',
   'turn.kind.note': '记录',
   'turn.jumpToPrompt': '跳转到此提问',
+  'scroll.toBottom': '跳到底部',
+  'scroll.newMessages': (v) => `${Number(v?.count ?? 0)} 条新消息`,
   'tasks.title': '后台任务',
   'tasks.empty': '当前没有运行中的任务',
   'tasks.refreshStale': '任务状态可能已过期，正在重连...',
