@@ -90,6 +90,44 @@ function getLastUserMessageId(messages: Message[]): string | null {
   return null;
 }
 
+/**
+ * Count substantive messages appended after `sinceId` (the last row the reader
+ * had caught up to). Keyed by id — robust to the array being rebuilt each
+ * transcript update. Thinking-only / empty assistant placeholders are skipped so
+ * the tally tracks visible output. Returns 0 when the baseline is unknown.
+ *
+ * While a reply is still streaming (`isResponding`), the active turn's messages
+ * are NOT counted yet: a message only tallies once its output has settled, so
+ * scrolling up mid-stream doesn't pre-increment — the "+1" lands when the reply
+ * finishes (matching Claude Code). The active turn spans the last user message
+ * onward.
+ */
+function countUnseenMessages(
+  messages: Message[],
+  sinceId: string | null,
+  isResponding: boolean,
+): number {
+  if (!sinceId) return 0;
+  const idx = messages.findIndex((m) => m.id === sinceId);
+  if (idx === -1) return 0;
+  let end = messages.length;
+  if (isResponding) {
+    for (let i = messages.length - 1; i > idx; i--) {
+      if (messages[i].role === 'user') {
+        end = i;
+        break;
+      }
+    }
+  }
+  let count = 0;
+  for (let i = idx + 1; i < end; i++) {
+    const m = messages[i];
+    if (m.role === 'assistant' && !m.content) continue;
+    count++;
+  }
+  return count;
+}
+
 export type DisplayItem =
   | {
       type: 'message';
@@ -899,10 +937,11 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
     // read "N new messages" and the reader knows there's fresh output below.
     const [showJumpButton, setShowJumpButton] = useState(false);
     const [unseenCount, setUnseenCount] = useState(0);
-    // Message count last seen at the bottom; the baseline for unseen tallying.
-    const seenLenRef = useRef(messages.length);
-    const messagesLenRef = useRef(messages.length);
-    messagesLenRef.current = messages.length;
+    // Id of the last row the reader had caught up to (baseline for the tally),
+    // plus a live handle to the messages array for the scroll/click callbacks.
+    const lastSeenIdRef = useRef<string | null>(null);
+    const messagesRef = useRef(messages);
+    messagesRef.current = messages;
 
     const hasTailApproval = useMemo(() => {
       if (!pendingApproval) return false;
@@ -969,7 +1008,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
     // the jump-to-bottom pill and the Ctrl+End shortcut.
     const handleJumpToBottom = useCallback(() => {
       shouldFollow.current = true;
-      seenLenRef.current = messagesLenRef.current;
+      const msgs = messagesRef.current;
+      lastSeenIdRef.current = msgs.length ? msgs[msgs.length - 1].id : null;
       setUnseenCount(0);
       setShowJumpButton(false);
       scrollToBottom();
@@ -1239,12 +1279,13 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
         shouldFollow.current = true;
       }
       // Jump-to-bottom pill: visible once meaningfully scrolled up. Arriving
-      // near the tail clears the unseen tally and the baseline so the next
-      // scroll-away counts only genuinely new output.
+      // near the tail clears the unseen tally and advances the baseline so the
+      // next scroll-away counts only genuinely new output.
       const nearBottom = distanceFromBottom < 40;
       setShowJumpButton((prev) => (prev === !nearBottom ? prev : !nearBottom));
       if (nearBottom) {
-        seenLenRef.current = messagesLenRef.current;
+        const msgs = messagesRef.current;
+        lastSeenIdRef.current = msgs.length ? msgs[msgs.length - 1].id : null;
         setUnseenCount((c) => (c === 0 ? c : 0));
       }
       refreshStickyRef.current();
@@ -1258,26 +1299,30 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
         shouldFollow.current = true;
         pendingScrollRef.current = null;
         setCollapseOverrides((prev) => (prev.size ? new Map() : prev));
-        seenLenRef.current = 0;
+        lastSeenIdRef.current = null;
         setUnseenCount(0);
         setShowJumpButton(false);
       }
     }, [messages.length]);
 
-    // Tally messages that arrive while the user is reading history (follow
-    // paused). At the tail the baseline tracks the live count, so nothing is
-    // marked unseen; scrolled away, each newly appended message bumps the count.
+    // Tally messages that arrive while the reader is away from the tail.
+    //
+    // The baseline (`lastSeenIdRef`) advances only while caught up at the bottom
+    // AND idle. The active reply doesn't tally until it settles (see
+    // countUnseenMessages), so the "+1" appears when the reply finishes rather
+    // than the moment it starts streaming. Derived, not accumulated, so it can't
+    // drift when the transcript array is rebuilt.
     useEffect(() => {
-      if (shouldFollow.current) {
-        seenLenRef.current = messages.length;
-        return;
+      if (shouldFollow.current && !isResponding) {
+        lastSeenIdRef.current = messages.length
+          ? messages[messages.length - 1].id
+          : null;
       }
-      if (messages.length > seenLenRef.current) {
-        const delta = messages.length - seenLenRef.current;
-        seenLenRef.current = messages.length;
-        setUnseenCount((c) => c + delta);
-      }
-    }, [messages]);
+      const n = shouldFollow.current
+        ? 0
+        : countUnseenMessages(messages, lastSeenIdRef.current, isResponding);
+      setUnseenCount((prev) => (prev === n ? prev : n));
+    }, [messages, isResponding]);
 
     // Jump-to-bottom shortcut, matching the pill's hint: ⌘↓ on Mac (no End key
     // on laptops), Ctrl/Cmd+End elsewhere. Skipped while typing in a field so it
@@ -1338,6 +1383,10 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
         // A new prompt supersedes any pending "Show in transcript" scroll.
         pendingScrollRef.current = null;
         requestAnimationFrame(scrollToBottom);
+        // Anchor the unseen baseline at the user's own prompt: scrolling away
+        // while it answers then counts only the reply ("1 new message"), not the
+        // prompt the user just typed.
+        lastSeenIdRef.current = lastId;
       }
       prevLastUserMsgId.current = lastId;
     }, [messages, catchingUp, scrollToBottom]);
