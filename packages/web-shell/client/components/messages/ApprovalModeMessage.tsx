@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { DAEMON_APPROVAL_MODES } from '@qwen-code/webui/daemon-react-sdk';
 import { useDelayedGlobalKeyDown } from '../../hooks/useDelayedGlobalKeyDown';
 import { useI18n } from '../../i18n';
+import { ModeIcon } from '../modeIcons';
 import styles from './ApprovalModeMessage.module.css';
 
 export const APPROVAL_MODE_ACTIVE_EVENT =
@@ -35,10 +36,12 @@ export function ApprovalModeMessage({
     onCloseRef.current = onClose;
   }, [onClose]);
 
+  // Use the richer mode.{id} / mode.{id}.desc strings (same ones the chip and
+  // the host ApprovalModeDialog use) rather than the terse mode.name.* set.
   const approvalModes: ModeItem[] = DAEMON_APPROVAL_MODES.map((id) => ({
     id,
-    name: t(`mode.name.${id}`),
-    description: t(`mode.desc.${id}`),
+    name: t(`mode.${id}`),
+    description: t(`mode.${id}.desc`),
   }));
 
   const [selectedIdx, setSelectedIdx] = useState(() => {
@@ -170,11 +173,16 @@ export function ApprovalModeMessage({
               }}
               onMouseEnter={() => setSelectedIdx(index)}
             >
-              <span className={styles.pointer}>{selected ? '›' : ' '}</span>
-              <span className={styles.number}>{index + 1}.</span>
-              <span className={styles.label}>
-                {m.name} - {m.description}
-              </span>
+              <ModeIcon mode={m.id} className={styles.rowIcon} />
+              <div className={styles.rowText}>
+                <span className={styles.rowName}>{m.name}</span>
+                <span className={styles.rowDesc}>{m.description}</span>
+              </div>
+              {m.id === currentMode && (
+                <span className={styles.rowCheck} aria-hidden="true">
+                  ✓
+                </span>
+              )}
             </div>
           );
         })}
