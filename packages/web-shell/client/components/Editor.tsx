@@ -1929,11 +1929,11 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
 
   return (
     <div className={containerClass} onClick={focus}>
-      <div className={styles.borderTop}>
-        {sessionName && (
-          <span className={styles.borderTopLabel}>{sessionName}</span>
-        )}
-      </div>
+      {sessionName && (
+        <div className={styles.cardHead}>
+          <span className={styles.sessionLabel}>{sessionName}</span>
+        </div>
+      )}
       {searchMode && (
         <div ref={searchUiRef}>
           <div className={styles.searchBar}>
@@ -2039,36 +2039,44 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
       </div>
       {showShortcutHints && (
         <div className={styles.hints}>
-          <button {...hintProps(navigatePrevHistory)} disabled={!histNav.canUp}>
-            <span className={styles.hintKey}>↑</span>
-            {t('editor.hintPrev')}
-          </button>
-          <span className={styles.hintSep}>·</span>
-          <button
-            {...hintProps(navigateNextHistory)}
-            disabled={!histNav.canDown}
-          >
-            <span className={styles.hintKey}>↓</span>
-            {t('editor.hintNext')}
-          </button>
-          <span className={styles.hintSep}>·</span>
-          <button {...hintProps(openHistorySearch, 'dialog')}>
-            <span className={styles.hintKey}>ctrl+r</span>
-            {t('editor.hintSearch')}
-          </button>
-          <span className={styles.hintSep}>·</span>
-          <button {...hintProps(() => insertText('/'), 'listbox')}>
-            <span className={styles.hintKey}>/</span>
-            {t('editor.hintCommands')}
-          </button>
-          <span className={styles.hintSep}>·</span>
-          <button {...hintProps(() => insertText('@'), 'listbox')}>
-            <span className={styles.hintKey}>@</span>
-            {t('editor.hintFiles')}
-          </button>
+          {/* History cluster — moving through past prompts. */}
+          <div className={styles.hintGroup}>
+            <button
+              {...hintProps(navigatePrevHistory)}
+              disabled={!histNav.canUp}
+            >
+              <span className={styles.hintKey}>↑</span>
+              {t('editor.hintPrev')}
+            </button>
+            <span className={styles.hintSep}>·</span>
+            <button
+              {...hintProps(navigateNextHistory)}
+              disabled={!histNav.canDown}
+            >
+              <span className={styles.hintKey}>↓</span>
+              {t('editor.hintNext')}
+            </button>
+            <span className={styles.hintSep}>·</span>
+            <button {...hintProps(openHistorySearch, 'dialog')}>
+              <span className={styles.hintKey}>ctrl+r</span>
+              {t('editor.hintSearch')}
+            </button>
+          </div>
+          <span className={styles.hintDivider} aria-hidden="true" />
+          {/* Insert cluster — trigger characters that open a picker. */}
+          <div className={styles.hintGroup}>
+            <button {...hintProps(() => insertText('/'), 'listbox')}>
+              <span className={styles.hintKey}>/</span>
+              {t('editor.hintCommands')}
+            </button>
+            <span className={styles.hintSep}>·</span>
+            <button {...hintProps(() => insertText('@'), 'listbox')}>
+              <span className={styles.hintKey}>@</span>
+              {t('editor.hintFiles')}
+            </button>
+          </div>
         </div>
       )}
-      <div className={styles.borderBottom} />
     </div>
   );
 });

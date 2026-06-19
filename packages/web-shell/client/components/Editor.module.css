@@ -1,47 +1,48 @@
+/*
+ * The composer echoes a sent user turn (UserMessage): the same rounded card,
+ * faint fill, and left accent rail, with the shared ">" chevron. What you type
+ * reads like what it becomes once sent — both stay monospace for terminal
+ * density. The left rail recolors per mode (shell / plan / auto-edit / yolo),
+ * the way the old top/bottom rules did, so mode stays legible at a glance.
+ */
 .container {
   cursor: text;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border-left: 2px solid
+    color-mix(in srgb, var(--accent-color) 42%, transparent);
+  background: var(--subtle-bg);
 }
 
-.borderTop,
-.borderBottom {
-  height: 1px;
+/* Session name as a quiet running head tucked into the card's top-right. */
+.cardHead {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
 }
 
-/* Accent fade rule on top; a soft border-color rule on the bottom. */
-.borderTop {
-  position: relative;
-  background: linear-gradient(90deg, var(--accent-color), transparent 72%);
-  opacity: 0.75;
-}
-
-.borderBottom {
-  background: var(--border-color);
-}
-
-.borderTopLabel {
-  position: absolute;
-  right: 2ch;
-  top: 50%;
-  max-width: min(48ch, calc(100% - 4ch));
-  padding: 0 1ch;
+.sessionLabel {
+  max-width: min(48ch, 100%);
   overflow: hidden;
-  color: var(--text-secondary);
-  background: var(--app-bg);
-  font-size: 12px;
-  line-height: 1;
+  color: var(--text-dimmed);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transform: translateY(-50%);
 }
 
 .line {
   display: flex;
   align-items: baseline;
-  padding: 6px 0;
+  padding: 2px 0;
 }
 
+/* Chevron uses --user-color so it matches the sent user message's prefix. */
 .prefix {
-  color: var(--assist-color);
+  color: var(--user-color);
   font-weight: bold;
   flex-shrink: 0;
   padding-right: 1ch;
@@ -61,25 +62,21 @@
   color: var(--error-color);
 }
 
-.shellMode .borderTop,
-.shellMode .borderBottom {
-  background: var(--warning-color);
-  opacity: 0.4;
+/* Mode coloring rides the left rail (replaces the old top/bottom rule recolor). */
+.shellMode {
+  border-left-color: color-mix(in srgb, var(--warning-color) 55%, transparent);
 }
 
-.modePlan .borderTop,
-.modePlan .borderBottom {
-  background: var(--success-color);
+.modePlan {
+  border-left-color: color-mix(in srgb, var(--success-color) 55%, transparent);
 }
 
-.modeAutoEdit .borderTop,
-.modeAutoEdit .borderBottom {
-  background: #8b7530;
+.modeAutoEdit {
+  border-left-color: #8b7530;
 }
 
-.modeYolo .borderTop,
-.modeYolo .borderBottom {
-  background: #8b3a4a;
+.modeYolo {
+  border-left-color: color-mix(in srgb, var(--error-color) 60%, transparent);
 }
 
 .wrapper {
@@ -89,7 +86,7 @@
 
 /*
  * Input chrome — keeps the shared ">" prompt (it means "the user's turn", same
- * as sent messages); the frame is an accent fade rule on top and tracked
+ * as sent messages); the frame is the UserMessage-style card and tracked
  * small-caps hints. Typed text stays monospace (.cm-content) so code / commands
  * / completions still align.
  */
@@ -97,14 +94,30 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  column-gap: 1ch;
-  padding: 2px 0 0;
+  gap: 0.5ch 1.6ch;
+  padding: 6px 0 0;
   font-family: var(--font-sans);
   text-transform: uppercase;
   letter-spacing: 0.14em;
   font-size: 10px;
   line-height: 1.4;
   user-select: none;
+}
+
+/* Each cluster (history / insert) groups its own items tightly; the wider
+   .hints gap plus the divider separate one cluster from the next. */
+.hintGroup {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 1ch;
+}
+
+.hintDivider {
+  width: 1px;
+  height: 0.9em;
+  flex-shrink: 0;
+  background: var(--border-color);
 }
 
 .hintItem {
@@ -124,12 +137,19 @@
   color: var(--text-primary);
 }
 
+/* Keycap styling so the row reads as "keyboard shortcuts" — distinct from the
+   clickable config chips in the status bar below. */
 .hintKey {
+  padding: 1px 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  letter-spacing: 0;
   color: var(--text-secondary);
 }
 
 .hintItem:hover .hintKey,
 .hintItem:focus-visible .hintKey {
+  border-color: var(--accent-color);
   color: var(--accent-color);
 }
 
@@ -589,7 +609,7 @@
 }
 
 @media (max-width: 700px) {
-  .borderTopLabel {
+  .cardHead {
     display: none;
   }
 }
