@@ -34,33 +34,54 @@
 
 .row {
   display: flex;
-  gap: 6px;
-  align-items: baseline;
-  min-height: 18px;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 6px 8px;
+  border-radius: 6px;
   cursor: pointer;
 }
 
-.selected .label {
-  color: var(--accent-color);
+/* Keyboard / hover cursor: a soft fill (matches the chip hover language). */
+.selected {
+  background: var(--subtle-bg-strong);
 }
 
-.pointer {
-  display: inline-block;
-  width: 1ch;
+.rowIcon {
   flex-shrink: 0;
-  color: var(--accent-color);
-  font-weight: 700;
-}
-
-.number {
-  min-width: 2ch;
+  margin-top: 2px;
   color: var(--text-secondary);
-  text-align: right;
 }
 
-.label {
+.selected .rowIcon,
+.selected .rowName {
+  color: var(--accent-color);
+}
+
+.rowText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.rowName {
+  font-weight: 600;
   color: var(--text-primary);
+}
+
+.rowDesc {
+  color: var(--text-dimmed);
+  font-size: 12px;
+  line-height: 1.4;
   overflow-wrap: anywhere;
+}
+
+/* Check on the currently-active mode. */
+.rowCheck {
+  margin-left: auto;
+  align-self: center;
+  padding-left: 8px;
+  color: var(--accent-color);
 }
 
 .footer {

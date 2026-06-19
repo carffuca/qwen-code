@@ -10,6 +10,7 @@ import {
 import type { DaemonSessionTaskStatus } from '@qwen-code/sdk/daemon';
 import { useConnection } from '@qwen-code/webui/daemon-react-sdk';
 import { useI18n } from '../i18n';
+import { ModeIcon, ModelIcon } from './modeIcons';
 import styles from './StatusBar.module.css';
 
 const GOAL_PILL_INTERVAL_MS = 1000;
@@ -248,21 +249,12 @@ export const StatusBar = forwardRef<StatusBarHandle, StatusBarProps>(
 
     return (
       <div className={styles.bar}>
+        {/*
+         * Left — agent config: the two stateful selectors (mode, model) sit
+         * together as a pair, each showing its current value with a ▾ to signal
+         * it's changeable. These answer "what is the agent set to".
+         */}
         <div className={styles.left}>
-          {connected && !hideSettings && (
-            <button
-              type="button"
-              className={styles.settingsButton}
-              onClick={onOpenSettings}
-              onMouseDown={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.stopPropagation()}
-              title={t('settings.title')}
-              aria-label={t('settings.title')}
-              aria-haspopup="dialog"
-            >
-              <GearIcon />
-            </button>
-          )}
           {escapeHint ? (
             <span className={styles.escapeHint}>
               {t('editor.escClearHint')}
@@ -276,70 +268,66 @@ export const StatusBar = forwardRef<StatusBarHandle, StatusBarProps>(
                   onClick={onSelectMode}
                   onMouseDown={(e) => e.stopPropagation()}
                   onTouchStart={(e) => e.stopPropagation()}
-                  title={t('mode.select')}
+                  title={`${t('mode.select')} · ${t('status.modeHint')}`}
                   aria-haspopup="listbox"
                 >
+                  <ModeIcon
+                    mode={currentMode}
+                    size={12}
+                    className={`${styles.chipIcon} ${modeIndicator.className}`}
+                  />
                   <span
                     className={`${styles.modeLabel} ${modeIndicator.className}`}
                   >
                     {modeIndicator.label}
                   </span>
-                  <span className={styles.modeHint}>
-                    {t('status.modeHint')}
+                  <span className={styles.caret} aria-hidden="true">
+                    ▾
                   </span>
                 </button>
               )}
-              {onToggleShortcuts ? (
+              {currentModel && (
                 <button
                   type="button"
-                  className={styles.shortcutsButton}
-                  onClick={onToggleShortcuts}
+                  className={styles.modelButton}
+                  onClick={onSelectModel}
                   onMouseDown={(e) => e.stopPropagation()}
                   onTouchStart={(e) => e.stopPropagation()}
-                  aria-haspopup="dialog"
-                  aria-label={t('status.shortcuts')}
+                  title={t('model.select')}
+                  aria-haspopup="listbox"
                 >
-                  {t('status.shortcuts')}
+                  <ModelIcon size={12} className={styles.chipIcon} />
+                  <span className={styles.model}>{currentModel}</span>
+                  <span className={styles.caret} aria-hidden="true">
+                    ▾
+                  </span>
                 </button>
-              ) : (
-                <span>{t('status.shortcuts')}</span>
               )}
-            </>
-          )}
-          {taskPillLabel && (
-            <>
-              <span className={styles.separator}>·</span>
-              <button
-                ref={taskPillRef}
-                type="button"
-                className={styles.taskPill}
-                onClick={onOpenTasks}
-                onKeyDown={handleTaskPillKeyDown}
-                disabled={!onOpenTasks}
-              >
-                {taskPillLabel}
-              </button>
             </>
           )}
         </div>
 
+        {/*
+         * Right — live status then utilities: what's happening now (tasks,
+         * context, goal, connection) clusters first, then the low-frequency
+         * utility icons (settings, shortcuts) pin to the far edge.
+         */}
         <div className={styles.right}>
           {!connected && (
             <span className={styles.disconnected}>
               {t('status.disconnected')}
             </span>
           )}
-          {currentModel && (
+          {taskPillLabel && (
             <button
+              ref={taskPillRef}
               type="button"
-              className={styles.modelButton}
-              onClick={onSelectModel}
-              onMouseDown={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.stopPropagation()}
-              title={t('model.select')}
-              aria-haspopup="listbox"
+              className={styles.taskPill}
+              onClick={onOpenTasks}
+              onKeyDown={handleTaskPillKeyDown}
+              disabled={!onOpenTasks}
             >
-              <span className={styles.model}>{currentModel}</span>
+              {taskPillLabel}
             </button>
           )}
           {contextWindow > 0 && tokenCount > 0 && (
@@ -358,6 +346,34 @@ export const StatusBar = forwardRef<StatusBarHandle, StatusBarProps>(
             <span className={styles.goal} title={activeGoal?.condition}>
               {goalLabel}
             </span>
+          )}
+          {connected && !hideSettings && (
+            <button
+              type="button"
+              className={styles.iconButton}
+              onClick={onOpenSettings}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              title={t('settings.title')}
+              aria-label={t('settings.title')}
+              aria-haspopup="dialog"
+            >
+              <GearIcon />
+            </button>
+          )}
+          {onToggleShortcuts && (
+            <button
+              type="button"
+              className={styles.iconButton}
+              onClick={onToggleShortcuts}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              aria-haspopup="dialog"
+              aria-label={t('status.shortcuts')}
+              title={t('status.shortcuts')}
+            >
+              ?
+            </button>
           )}
         </div>
       </div>

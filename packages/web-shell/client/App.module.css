@@ -187,7 +187,9 @@
 }
 
 .footer {
-  margin: 0 10px;
+  /* Match the message list's 24px content inset so the composer card lines up
+     with the user-message cards above it (was 10px → looked wider). */
+  margin: 0 24px;
   flex-shrink: 0;
 }
 
