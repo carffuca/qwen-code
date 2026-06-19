@@ -71,6 +71,13 @@
   box-sizing: border-box;
 }
 
+/*
+ * Dark — the neutral, technical option (light/editorial stays the default).
+ * Shares the editorial *structure* from .app but overrides the bookish tokens to
+ * read as a developer tool: system sans prose (not serif), a plain hairline rule
+ * (not the three-dot ornament), upright quotes, tighter metrics, and neutral
+ * body text. Colors stay a restrained near-black + single blue accent.
+ */
 .themeDark {
   --app-bg: #111;
   --bg-primary: #0d0d0d;
@@ -95,7 +102,8 @@
     #c3677f 100%
   );
   --editor-bg: #0a0a0a;
-  --msg-body-color: #e3bcfe;
+  /* Neutral body text — not the editorial lavender. */
+  --msg-body-color: #d8d8d8;
   --thinking-pre-color: #9d9ec6;
   --subtle-bg: rgba(255, 255, 255, 0.04);
   --subtle-bg-strong: rgba(255, 255, 255, 0.06);
@@ -106,6 +114,18 @@
   --warning-border: rgba(236, 201, 75, 0.2);
   --error-bg: rgba(252, 129, 129, 0.08);
   --error-border: rgba(252, 129, 129, 0.2);
+
+  /* Technical structure overrides (vs .app's editorial defaults). */
+  --font-prose: var(--font-sans);
+  --font-heading: var(--font-sans);
+  --prose-size: 14px;
+  --prose-leading: 1.62;
+  --heading-tracking: -0.006em;
+  --quote-style: normal;
+  /* Plain hairline section rule instead of the three-dot ornament. */
+  --rule-image: var(--border-color);
+  --rule-width: 100%;
+  --rule-height: 1px;
 }
 
 /*
