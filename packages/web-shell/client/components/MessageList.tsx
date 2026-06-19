@@ -139,10 +139,12 @@ export type DisplayItem =
        */
       collapse?: TurnCollapseHead;
       /**
-       * Process-drawer row: an expanded turn's intermediate step, rendered
-       * inside the drawer with a left timeline rail.
+       * Process-drawer row: an expanded turn's intermediate step, rendered on a
+       * shared tinted band so the steps read as one bounded "process" block.
        */
       drawer?: boolean;
+      /** Last row of the drawer band — rounds the band's bottom. */
+      drawerLast?: boolean;
       /**
        * This drawer row is mid auto-collapse — kept rendered for one fade-out
        * beat before the fold removes it, so the process doesn't just blink out.
@@ -160,6 +162,8 @@ export type DisplayItem =
       timestamp?: number;
       /** Process drawer: see the message variant's `drawer`. */
       drawer?: boolean;
+      /** Last row of the drawer band — see the message variant. */
+      drawerLast?: boolean;
       /** Mid auto-collapse fade-out; see the message variant. */
       collapsing?: boolean;
     };
@@ -675,6 +679,13 @@ export function applyTurnCollapse(
       if (finalOutsideIdx >= 0)
         result.push(stripThinking(items[finalOutsideIdx]));
     } else {
+      // The last drawer-band row (everything but the final answer goes in the
+      // band) rounds the band's bottom; the top is flat since the band continues
+      // straight from the turn head above.
+      let lastDrawer = -1;
+      for (let i = start + 1; i <= end; i++) {
+        if (i !== finalOutsideIdx) lastDrawer = i;
+      }
       for (let i = start + 1; i <= end; i++) {
         if (i === finalOutsideIdx) {
           result.push(collapsed ? stripThinking(items[i]) : items[i]);
@@ -682,6 +693,7 @@ export function applyTurnCollapse(
           result.push({
             ...items[i],
             drawer: true,
+            ...(i === lastDrawer ? { drawerLast: true } : {}),
             ...(animatingCollapse ? { collapsing: true } : {}),
           });
         }
@@ -1454,15 +1466,20 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
         const item = visibleItems[itemIndex];
         if (!item) return null;
 
-        // Process drawer: wrap an expanded turn's intermediate rows in a
-        // left-railed container so they read as one bounded "process" block.
+        // Process drawer: render an expanded turn's intermediate rows on a
+        // shared tinted band so they read as one bounded "process" block; the
+        // first / last row round the band's top / bottom.
         const inDrawer = item.drawer === true;
         const withDrawer = (node: ReactNode) =>
           inDrawer ? (
             <div
-              className={`${styles.drawerRow}${
-                item.collapsing ? ` ${styles.drawerRowCollapsing}` : ''
-              }`}
+              className={[
+                styles.drawerRow,
+                item.drawerLast && styles.drawerLast,
+                item.collapsing && styles.drawerRowCollapsing,
+              ]
+                .filter(Boolean)
+                .join(' ')}
             >
               {node}
             </div>

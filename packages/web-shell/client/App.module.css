@@ -48,6 +48,10 @@
   /* Drop shadow for floating surfaces (e.g. the sticky prompt). Neutral by
      default; the light paper theme warms it. */
   --float-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+  /* Process bar + drawer fill: a fainter tint than the user-message --subtle-bg,
+     so the prompt stays the focus and the process region recedes. Derived from
+     --subtle-bg, so it tracks each theme's palette. */
+  --process-bg: color-mix(in srgb, var(--subtle-bg) 45%, transparent);
 
   position: relative;
   display: flex;

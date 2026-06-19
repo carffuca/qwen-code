@@ -784,6 +784,8 @@ const EN: Messages = {
   'turn.kind.agent': 'sub-agents',
   'turn.kind.plan': 'plans',
   'turn.kind.note': 'notes',
+  'turn.parenOpen': ' (',
+  'turn.parenClose': ')',
   'turn.jumpToPrompt': 'Jump to this prompt',
   'scroll.toBottom': 'Jump to bottom',
   'scroll.newMessages': (v) => {
@@ -1615,6 +1617,8 @@ const ZH: Messages = {
   'turn.kind.agent': '子代理',
   'turn.kind.plan': '计划',
   'turn.kind.note': '记录',
+  'turn.parenOpen': '（',
+  'turn.parenClose': '）',
   'turn.jumpToPrompt': '跳转到此提问',
   'scroll.toBottom': '跳到底部',
   'scroll.newMessages': (v) => `${Number(v?.count ?? 0)} 条新消息`,

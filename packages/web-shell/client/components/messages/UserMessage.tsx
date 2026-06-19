@@ -108,6 +108,10 @@ export const UserMessage = memo(function UserMessage({
           type="button"
           className={[
             styles.collapseToggle,
+            // While the turn is still streaming, sweep a color shimmer across the
+            // label so it reads as "in progress".
+            collapse.liveStartedAt !== undefined &&
+              styles.collapseToggleLoading,
             collapsePulse && styles.collapsePulse,
           ]
             .filter(Boolean)
@@ -166,12 +170,18 @@ export const UserMessage = memo(function UserMessage({
     </div>
   );
 
+  // When the turn is expanded its process drawer renders directly below; the
+  // head then drops its bottom rounding/gap so it fuses into one continuous card
+  // with the drawer band (the drawer rounds the bottom).
+  const open = hasToggle && !!collapse && !collapse.collapsed;
+
   // One card: the prompt on top, the process bar (toggle + metrics) fused below.
   return (
     <div
       className={[
         styles.turnHead,
         collapse?.collapsed ? styles.turnHeadCollapsed : '',
+        open ? styles.turnHeadOpen : '',
       ]
         .filter(Boolean)
         .join(' ')}

@@ -10,19 +10,31 @@
   overflow: hidden;
   border-left: 2px solid
     color-mix(in srgb, var(--accent-color) 42%, transparent);
-  background: var(--subtle-bg);
+  /* No fill here — the prompt row carries the (darker) user-message tint and the
+     process bar a fainter one, so the prompt reads as the focus and the process
+     region recedes. */
 }
 
 .turnHeadCollapsed {
   margin-bottom: 2px;
 }
 
-/* Prompt content row inside the card. */
+/* Expanded: the process drawer butts directly below, so square off the bottom
+   and drop the gap — head + drawer read as one continuous card (the drawer's
+   last row rounds the bottom). */
+.turnHeadOpen {
+  margin-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* Prompt content row inside the card — the user-message tint. */
 .message {
   display: flex;
   gap: 8px;
   align-items: baseline;
   padding: 8px 12px;
+  background: var(--subtle-bg);
 }
 
 .prefix {
@@ -64,6 +76,8 @@
   box-sizing: border-box;
   padding: 5px 12px;
   border-top: 1px solid var(--border-color);
+  /* Fainter than the prompt fill, matching the drawer band below it. */
+  background: var(--process-bg);
   font-family: var(--font-sans);
   font-size: 10.5px;
   letter-spacing: 0.03em;
@@ -91,6 +105,59 @@
   background: var(--subtle-bg-strong);
   color: var(--accent-hover);
   text-decoration: underline;
+}
+
+/*
+ * Loading state: a soft highlight sweeps left-to-right across the label text
+ * while the turn streams, signalling work in progress. The gradient is clipped
+ * to the glyphs (dimmed base with a brighter accent band gliding through).
+ */
+.collapseToggleLoading {
+  background-image: linear-gradient(
+    100deg,
+    var(--text-dimmed) 0%,
+    var(--text-dimmed) 35%,
+    var(--accent-color) 50%,
+    var(--text-dimmed) 65%,
+    var(--text-dimmed) 100%
+  );
+  background-size: 220% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: process-shimmer 1.5s linear infinite;
+}
+
+.collapseToggleLoading:hover {
+  background-image: linear-gradient(
+    100deg,
+    var(--text-secondary) 0%,
+    var(--text-secondary) 35%,
+    var(--accent-hover) 50%,
+    var(--text-secondary) 65%,
+    var(--text-secondary) 100%
+  );
+  -webkit-text-fill-color: transparent;
+  text-decoration: none;
+}
+
+@keyframes process-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collapseToggleLoading {
+    animation: none;
+    background-image: none;
+    -webkit-text-fill-color: var(--accent-color);
+    color: var(--accent-color);
+  }
 }
 
 .collapseMeta {

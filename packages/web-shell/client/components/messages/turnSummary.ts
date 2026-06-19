@@ -60,9 +60,10 @@ export function metricsText(
 }
 
 /**
- * The process bar's left side: "过程 · 思考 N · 工具 N · 记录 N",
- * built from the per-kind step counts plus the note (key-row) count. Falls back
- * to a plain step count when no per-kind summary is available.
+ * The process bar's left side: "过程（思考 N · 工具 N · 记录 N）", the "过程"
+ * label with the per-kind step counts (plus the note/key-row count) bracketed.
+ * Falls back to a plain step count when no per-kind summary is available. Paren
+ * glyphs are localized (full-width for zh, spaced ASCII for en).
  */
 export function processLabel(collapse: TurnCollapseHead, t: Translate): string {
   const counts = collapse.summary;
@@ -74,10 +75,9 @@ export function processLabel(collapse: TurnCollapseHead, t: Translate): string {
   if (collapse.noteCount) {
     parts.push(`${t('turn.kind.note')} ${collapse.noteCount}`);
   }
-  if (parts.length === 0) {
-    return `${t('turn.process')} · ${t('turn.hiddenSteps', {
-      count: collapse.hiddenCount,
-    })}`;
-  }
-  return [t('turn.process'), ...parts].join(' · ');
+  const inner =
+    parts.length === 0
+      ? t('turn.hiddenSteps', { count: collapse.hiddenCount })
+      : parts.join(' · ');
+  return `${t('turn.process')}${t('turn.parenOpen')}${inner}${t('turn.parenClose')}`;
 }

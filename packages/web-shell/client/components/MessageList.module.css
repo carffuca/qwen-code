@@ -239,16 +239,25 @@
 }
 
 /*
- * Process drawer: each intermediate row of an expanded turn carries a left
- * timeline rail and indent, so consecutive rows read as one bounded block
- * hanging under the "过程" summary bar. Applied wherever applyTurnCollapse sets
- * the `drawer` flag on a row.
+ * Process drawer: each intermediate row of an expanded turn sits on a shared
+ * faint tinted band that continues directly from the turn head above — same
+ * fill and the same continuous left accent rail — so prompt → process bar →
+ * steps read as one card. The head squares its bottom; the band's last row
+ * rounds the bottom and adds the gap before the final answer. Middle rows butt
+ * flush so the fill is continuous, with no ragged inset edges.
  */
 .drawerRow {
-  margin-left: 9px;
-  padding-left: 16px;
-  border-left: 1px solid
-    color-mix(in srgb, var(--accent-color) 32%, var(--border-color));
+  padding: 1px 14px;
+  /* Fainter than the user-message tint above; matches the process bar. */
+  background: var(--process-bg);
+  border-left: 2px solid
+    color-mix(in srgb, var(--accent-color) 42%, transparent);
+}
+
+.drawerLast {
+  padding-bottom: 7px;
+  border-radius: 0 0 8px 8px;
+  margin-bottom: 12px;
 }
 
 /* The whole process drawer fades out together as the turn auto-collapses,
