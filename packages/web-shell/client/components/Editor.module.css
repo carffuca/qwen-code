@@ -5,11 +5,17 @@
 .borderTop,
 .borderBottom {
   height: 1px;
-  background: var(--text-secondary);
 }
 
+/* Accent fade rule on top; a soft border-color rule on the bottom. */
 .borderTop {
   position: relative;
+  background: linear-gradient(90deg, var(--accent-color), transparent 72%);
+  opacity: 0.75;
+}
+
+.borderBottom {
+  background: var(--border-color);
 }
 
 .borderTopLabel {
@@ -81,13 +87,22 @@
   min-width: 0;
 }
 
+/*
+ * Input chrome — keeps the shared ">" prompt (it means "the user's turn", same
+ * as sent messages); the frame is an accent fade rule on top and tracked
+ * small-caps hints. Typed text stays monospace (.cm-content) so code / commands
+ * / completions still align.
+ */
 .hints {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   column-gap: 1ch;
   padding: 2px 0 0;
-  font-size: 11px;
+  font-family: var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 10px;
   line-height: 1.4;
   user-select: none;
 }

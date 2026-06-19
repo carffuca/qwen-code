@@ -778,6 +778,13 @@ const EN: Messages = {
     const n = v?.count ?? 0;
     return `${n} step${n === 1 ? '' : 's'}`;
   },
+  'turn.process': 'Process',
+  'turn.kind.thinking': 'thinking',
+  'turn.kind.tool': 'tools',
+  'turn.kind.agent': 'sub-agents',
+  'turn.kind.plan': 'plans',
+  'turn.kind.note': 'notes',
+  'turn.jumpToPrompt': 'Jump to this prompt',
   'tasks.title': 'Background tasks',
   'tasks.empty': 'No tasks currently running',
   'tasks.refreshStale': 'Task status may be stale; reconnecting...',
@@ -868,9 +875,11 @@ const EN: Messages = {
   'settings.requiresRestart': 'This change requires a restart to take effect.',
   'settings.corrupted': (v) =>
     `Settings file was corrupted${v?.recovered === 'true' ? ' (recovered from backup)' : ''}`,
-  'welcome.changeModel': '(/model to change)',
   'welcome.defaultModel': 'unknown model',
-  'welcome.modeHint': 'Shift+Tab or /approval-mode',
+  'welcome.tagline': 'The coding companion',
+  'welcome.label.model': 'Model',
+  'welcome.label.mode': 'Mode',
+  'welcome.label.dir': 'Directory',
   'welcome.tipLabel': 'Tips:',
 };
 
@@ -1595,6 +1604,13 @@ const ZH: Messages = {
   'turn.expand': '展开步骤',
   'turn.cached': '缓存',
   'turn.hiddenSteps': (v) => `${v?.count ?? 0} 步`,
+  'turn.process': '过程',
+  'turn.kind.thinking': '思考',
+  'turn.kind.tool': '工具',
+  'turn.kind.agent': '子代理',
+  'turn.kind.plan': '计划',
+  'turn.kind.note': '记录',
+  'turn.jumpToPrompt': '跳转到此提问',
   'tasks.title': '后台任务',
   'tasks.empty': '当前没有运行中的任务',
   'tasks.refreshStale': '任务状态可能已过期，正在重连...',
@@ -1667,8 +1683,11 @@ const ZH: Messages = {
   'tool.showLess': '▲ 显示更少',
   'tool.showFullLines': '▼ 显示完整行',
   'tool.linesTotal': (v) => `▼ 共 ${v?.count ?? 0} 行`,
-  'welcome.changeModel': '(/model 切换)',
   'welcome.defaultModel': '未知模型',
+  'welcome.tagline': '你的编程伙伴',
+  'welcome.label.model': '模型',
+  'welcome.label.mode': '模式',
+  'welcome.label.dir': '工作目录',
   'settings.title': '设置',
   'settings.loading': '正在加载设置...',
   'settings.empty': '暂无可用设置。',
@@ -1783,7 +1802,6 @@ const ZH: Messages = {
   'settings.label.agents.arena.preserveArtifacts': '保留 Arena 产物',
   'settings.description.agents.arena.preserveArtifacts':
     '启用后，Arena worktree 和会话状态文件会在会话结束或主智能体退出后保留。',
-  'welcome.modeHint': 'Shift+Tab 或 /approval-mode',
   'welcome.tipLabel': '提示：',
 };
 

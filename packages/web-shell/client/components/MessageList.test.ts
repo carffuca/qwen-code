@@ -430,21 +430,23 @@ describe('applyTurnCollapse', () => {
     expect(messageRow(out[0]).collapse?.hiddenCount).toBe(1);
   });
 
-  it('collapsing the active turn folds to prompt + seam (no stranded line)', () => {
+  it('collapsing the active turn folds the process but keeps the latest answer', () => {
     const items = groupParallelAgents([
       makeUserMessage('u1'),
       makeMultiToolGroup('g1'),
-      // An intermediate status line, not a final answer — the turn is still live.
+      // The latest streamed assistant text — the drawer model treats it as the
+      // turn's answer and keeps it outside the fold even while it streams.
       { id: 'a1', role: 'assistant', content: 'Deterministic analysis clean…' },
     ]);
     const out = collapseItems(items, {
       isResponding: true,
       overrides: new Map([['u1', false]]),
     });
-    // No final answer yet, so the fold drops the intermediate text too — only
-    // the prompt row (carrying the seam) survives.
-    expect(rowIds(out)).toEqual(['u1']);
+    // The tool process folds into the drawer; the latest answer stays visible so
+    // it never jumps in and out of the drawer as it streams.
+    expect(rowIds(out)).toEqual(['u1', 'a1']);
     expect(messageRow(out[0]).collapse?.collapsed).toBe(true);
+    expect(messageRow(out[0]).collapse?.hiddenCount).toBe(1);
   });
 
   it('keeps a step-less reply step-less while it streams', () => {
@@ -458,8 +460,9 @@ describe('applyTurnCollapse', () => {
         usage: { inputTokens: 100, outputTokens: 20 },
       },
     ]);
-    const head = messageRow(collapseItems(items, { isResponding: true })[0])
-      .collapse;
+    const head = messageRow(
+      collapseItems(items, { isResponding: true })[0],
+    ).collapse;
     // The streamed answer is provisional, not a step → nothing to fold, so no
     // chevron flashes in then out when the turn completes.
     expect(head?.hiddenCount).toBe(0);
@@ -475,8 +478,9 @@ describe('applyTurnCollapse', () => {
         timestamp: 2_000,
       },
     ]);
-    const head = messageRow(collapseItems(items, { isResponding: true })[0])
-      .collapse;
+    const head = messageRow(
+      collapseItems(items, { isResponding: true })[0],
+    ).collapse;
     expect(head?.liveStartedAt).toBe(1_000);
   });
 
@@ -599,7 +603,7 @@ describe('applyTurnCollapse', () => {
     expect(messageRow(out[1]).collapse?.collapsed).toBe(true);
   });
 
-  it('keeps system rows (errors/output) visible while hiding tool steps', () => {
+  it('folds system rows (errors/output) into the drawer and counts them as notes', () => {
     const items = groupParallelAgents([
       makeUserMessage('u1'),
       makeMultiToolGroup('g1'),
@@ -607,18 +611,26 @@ describe('applyTurnCollapse', () => {
       makeAssistantMessage('a1'),
     ]);
     const out = collapseItems(items);
-    expect(rowIds(out)).toEqual(['u1', 's1', 'a1']);
-    expect(messageRow(out[0]).collapse?.hiddenCount).toBe(1);
+    // The drawer model folds everything but the final answer; the system row
+    // tucks into the drawer and is flagged via noteCount so the summary can hint
+    // the drawer holds more than routine steps.
+    expect(rowIds(out)).toEqual(['u1', 'a1']);
+    expect(messageRow(out[0]).collapse?.hiddenCount).toBe(2);
+    expect(messageRow(out[0]).collapse?.noteCount).toBe(1);
   });
 
-  it('does not collapse a turn whose only response is a system row', () => {
+  it('collapses a turn whose only response is a system row, noting it', () => {
     const items = groupParallelAgents([
       makeUserMessage('u1'),
       makeSystemMessage('s1'),
     ]);
     const out = collapseItems(items);
-    expect(rowIds(out)).toEqual(['u1', 's1']);
-    expect(messageRow(out[0]).collapse).toBeUndefined();
+    // No final answer: the lone system row folds into the drawer behind the
+    // prompt, surfaced by the note badge.
+    expect(rowIds(out)).toEqual(['u1']);
+    expect(messageRow(out[0]).collapse?.collapsed).toBe(true);
+    expect(messageRow(out[0]).collapse?.hiddenCount).toBe(1);
+    expect(messageRow(out[0]).collapse?.noteCount).toBe(1);
   });
 
   it('hides mid-turn assistant narration but keeps the final answer', () => {

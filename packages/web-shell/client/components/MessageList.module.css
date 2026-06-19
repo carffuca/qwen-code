@@ -1,3 +1,16 @@
+/* Wrapper so the sticky prompt can overlay the top of the scroll viewport
+   without joining the scroll flow (which would shift virtualizer offsets). The
+   list keeps flex:1 inside it. */
+.listWrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* Clip the sticky prompt while it slides in/out above the top edge. */
+  overflow: hidden;
+}
+
 .list {
   flex: 1;
   overflow-y: auto;
@@ -5,6 +18,125 @@
   scrollbar-width: thin;
   scrollbar-color: var(--border-color) transparent;
   min-height: 0;
+}
+
+/*
+ * Sticky prompt: a floating context anchor pinned over the top of the
+ * list when the current turn's prompt has scrolled off. Translucent + blurred +
+ * inset rounded card (not an opaque slab) so underlying content stays faintly
+ * visible — avoiding the "sticky message occludes content" feel. Clickable to
+ * jump back to the turn.
+ */
+.stickyTurn {
+  position: absolute;
+  top: 0;
+  /* Align with the user card: the list pads 24px horizontally, so the pinned
+     anchor (and its left accent rail) line up with the card edges below. */
+  left: 24px;
+  right: 24px;
+  z-index: 5;
+  /* Mirror the fused card head: prompt line + process line stacked. */
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  /* Echo the user card: tinted bg + left accent rail + the › prefix, so the
+     pinned anchor reads as "the same prompt". */
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-left: 2px solid
+    color-mix(in srgb, var(--accent-color) 55%, transparent);
+  border-radius: 0 0 8px 8px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--subtle-bg-strong) 60%, var(--app-bg));
+  /* Float signals (distinct from the inline card): blur + shadow. */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--float-shadow);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: var(--text-secondary);
+  /* No enter/exit animation — the push-out `top` (scroll-linked) is the only
+     motion, like a standard sticky header; an extra slide/fade fought it. */
+}
+
+.stickyTurn:hover {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--accent-color) 40%, var(--border-color));
+  border-left-color: var(--accent-hover);
+}
+
+/* Line 1: the pinned prompt. */
+.stickyPrompt {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 14px;
+}
+
+.stickyChevron {
+  flex-shrink: 0;
+  color: var(--user-color);
+  font-family: var(--font-heading);
+  font-size: 1.1em;
+}
+
+.stickyText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Metrics on the prompt line for a process-less pinned turn — right, consistent
+   with other turns' process-bar metrics. */
+.stickyPromptMetrics {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 12px;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+  color: var(--text-dimmed);
+}
+
+/* Line 2: the process bar, fused below the prompt with a hairline seam — same
+   as the card head, with counts on the left and metrics on the right. */
+.stickyProcess {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 14px;
+  border-top: 1px solid
+    color-mix(in srgb, var(--accent-color) 14%, var(--border-color));
+  background: color-mix(in srgb, var(--subtle-bg-strong) 45%, transparent);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+}
+
+.stickyProcessLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--accent-color);
+}
+
+.stickyMetrics {
+  flex-shrink: 0;
+  white-space: nowrap;
+  color: var(--text-dimmed);
+}
+
+/* Right-align (with a gap) only when a process label sits on the left. */
+.stickyMetricsRight {
+  margin-left: auto;
+  padding-left: 12px;
 }
 
 .list::-webkit-scrollbar {
@@ -32,5 +164,37 @@
   }
   100% {
     background: transparent;
+  }
+}
+
+/*
+ * Process drawer: each intermediate row of an expanded turn carries a left
+ * timeline rail and indent, so consecutive rows read as one bounded block
+ * hanging under the "过程" summary bar. Applied wherever applyTurnCollapse sets
+ * the `drawer` flag on a row.
+ */
+.drawerRow {
+  margin-left: 9px;
+  padding-left: 16px;
+  border-left: 1px solid
+    color-mix(in srgb, var(--accent-color) 32%, var(--border-color));
+}
+
+/* The whole process drawer fades out together as the turn auto-collapses,
+   instead of the rows blinking out instantly. */
+.drawerRowCollapsing {
+  animation: drawer-fade-out 200ms ease forwards;
+  pointer-events: none;
+}
+
+@keyframes drawer-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawerRowCollapsing {
+    animation-duration: 1ms;
   }
 }

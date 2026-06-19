@@ -1862,6 +1862,9 @@ export const Editor = forwardRef<EditorHandle, EditorProps>(function Editor(
     visibleSearchStart,
     visibleSearchStart + 6,
   );
+  // The ">" chevron is shared with sent user messages — it reads as "the user's
+  // turn", so the input keeps it across all themes rather than swapping in a
+  // theme-specific glyph that would break that mental model.
   const prefixClass = [
     styles.prefix,
     shellMode

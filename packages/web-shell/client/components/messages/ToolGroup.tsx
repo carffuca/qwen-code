@@ -500,6 +500,8 @@ function isDescriptionExpandable(description: string): boolean {
   );
 }
 
+// Disclosure chevron at the row's trailing edge (pushed right), shown only when
+// the row can expand — the leading status tick stays the row's primary marker.
 function ToggleChevron({
   expandable,
   expanded,
@@ -507,9 +509,10 @@ function ToggleChevron({
   expandable: boolean;
   expanded: boolean;
 }) {
+  if (!expandable) return null;
   return (
-    <span className={styles.lineToggle} aria-hidden="true">
-      {expandable ? (expanded ? '▾' : '▸') : ''}
+    <span className={styles.lineToggleTrailing} aria-hidden="true">
+      {expanded ? '▾' : '▸'}
     </span>
   );
 }
@@ -725,6 +728,7 @@ export const ToolLine = memo(function ToolLine({
             {runningMeta && (
               <span className={styles.lineElapsed}>· {runningMeta}</span>
             )}
+            <ToggleChevron expandable expanded={expanded} />
           </div>
         )}
         {isComplete && (
@@ -753,6 +757,7 @@ export const ToolLine = memo(function ToolLine({
                 · {truncateText(info.reason, 80)}
               </span>
             )}
+            <ToggleChevron expandable expanded={expanded} />
           </div>
         )}
         {hasApproval && onConfirm && (
@@ -820,7 +825,6 @@ export const ToolLine = memo(function ToolLine({
             : undefined
         }
       >
-        <ToggleChevron expandable={expandable} expanded={expanded} />
         <StatusIcon status={tool.status} />
         <span className={styles.lineName}>{displayName}</span>
         {isTodo && hasTodoList && (
@@ -841,6 +845,7 @@ export const ToolLine = memo(function ToolLine({
             workspaceCwd,
           }}
         />
+        <ToggleChevron expandable={expandable} expanded={expanded} />
       </div>
       {isTodo && hasTodoList && (
         <TodoToolBody tool={tool} todos={todoItems!} expanded={expanded} />

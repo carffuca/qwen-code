@@ -13,6 +13,12 @@ export const WEB_SHELL_THEMES: readonly WebShellTheme[] = [
   WebShellThemeId.Light,
 ];
 
+// Value persisted to the daemon `ui.theme` setting for each web-shell theme.
+const THEME_SETTING_VALUES: Record<WebShellTheme, string> = {
+  [WebShellThemeId.Light]: 'Qwen Light',
+  [WebShellThemeId.Dark]: 'Qwen Dark',
+};
+
 const ThemeContext = createContext<WebShellTheme>(WebShellThemeId.Dark);
 
 export const ThemeProvider = ThemeContext.Provider;
@@ -36,5 +42,7 @@ export function themeSettingToWebShellTheme(
 }
 
 export function webShellThemeToSettingValue(theme: WebShellTheme): string {
-  return theme === WebShellThemeId.Light ? 'Qwen Light' : 'Qwen Dark';
+  return (
+    THEME_SETTING_VALUES[theme] ?? THEME_SETTING_VALUES[WebShellThemeId.Dark]
+  );
 }

@@ -157,6 +157,12 @@ import styles from './App.module.css';
 
 export const CompactModeContext = createContext(false);
 
+/** Root CSS-module class per theme; the editorial structure lives in `.app`. */
+const THEME_CLASS_NAMES: Record<WebShellTheme, string> = {
+  [WebShellThemeId.Dark]: styles.themeDark,
+  [WebShellThemeId.Light]: styles.themeLight,
+};
+
 /**
  * Per-snapshot status diffs (keyed by tool callId or plan message id), so a
  * history row can render what changed in that snapshot without re-deriving it
@@ -2664,9 +2670,7 @@ export function App({
 
   const appClassName = [
     styles.app,
-    selectedTheme === WebShellThemeId.Light
-      ? styles.themeLight
-      : styles.themeDark,
+    THEME_CLASS_NAMES[selectedTheme],
     externalClassName,
   ]
     .filter(Boolean)

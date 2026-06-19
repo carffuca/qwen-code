@@ -133,8 +133,8 @@ describe('UserMessage collapse toggle', () => {
       />,
     );
     const btn = container.querySelector('button')!;
-    // The toggle carries the chevron AND the step count (a roomy target)…
-    expect(btn.textContent).toMatch(/^[▸▾] 5 steps$/);
+    // The toggle carries the chevron AND the process label (a roomy target)…
+    expect(btn.textContent).toMatch(/^[▸▾] Process · 5 steps$/);
     // …while the metrics live outside the button, in an inert span.
     expect(btn.textContent).not.toContain('12.4s');
     const meta = btn.nextElementSibling!;
@@ -152,8 +152,7 @@ describe('UserMessage collapse toggle', () => {
     };
     const metaOf = (c: HTMLElement) =>
       c.querySelector('button')!.nextElementSibling!.textContent;
-    const btnOf = (c: HTMLElement) =>
-      c.querySelector('button')!.textContent;
+    const btnOf = (c: HTMLElement) => c.querySelector('button')!.textContent;
     const collapsed = render(
       <UserMessage
         content="hi"
@@ -171,8 +170,8 @@ describe('UserMessage collapse toggle', () => {
     // Inert metrics identical; the toggle differs only by the chevron glyph
     // (same-width in the mono font), so the row never reflows on toggle.
     expect(metaOf(collapsed)).toBe(metaOf(expanded));
-    expect(btnOf(collapsed)).toBe('▸ 5 steps');
-    expect(btnOf(expanded)).toBe('▾ 5 steps');
+    expect(btnOf(collapsed)).toBe('▸ Process · 5 steps');
+    expect(btnOf(expanded)).toBe('▾ Process · 5 steps');
   });
 
   it('renders only the toggle when no metrics are measured', () => {
@@ -184,10 +183,9 @@ describe('UserMessage collapse toggle', () => {
       />,
     );
     const btn = container.querySelector('button')!;
-    expect(btn.textContent).toContain('3 steps');
-    // No metrics → no inert span and no stray separator.
+    expect(btn.textContent).toBe('▸ Process · 3 steps');
+    // No metrics → no inert metrics span trailing the toggle.
     expect(btn.nextElementSibling).toBeNull();
-    expect(container.textContent).not.toContain('·');
   });
 
   it('shows cached reads parenthetically on input, with their share', () => {

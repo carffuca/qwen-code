@@ -20,15 +20,6 @@ const TIPS_ZH = [
   '使用 /clear 或 /new 开始新想法；之前的会话仍可从历史恢复。',
 ];
 
-const ASCII_LOGO = `
- ▄▄▄▄▄▄  ▄▄     ▄▄ ▄▄▄▄▄▄▄ ▄▄▄    ▄▄
-██╔═══██╗██║    ██║██╔════╝████╗  ██║
-██║   ██║██║ █╗ ██║█████╗  ██╔██╗ ██║
-██║▄▄ ██║██║███╗██║██╔══╝  ██║╚██╗██║
-╚██████╔╝╚███╔███╔╝███████╗██║ ╚████║
- ╚══▀▀═╝  ╚══╝╚══╝ ╚══════╝╚═╝  ╚═══╝
-`.trim();
-
 function pickTip(language: string): string {
   const tips = language === 'zh-CN' ? TIPS_ZH : TIPS_EN;
   return tips[Math.floor(Math.random() * tips.length)];
@@ -82,37 +73,32 @@ export function WelcomeHeader({
   return (
     <div className={styles.header}>
       <div className={styles.banner}>
-        <pre className={styles.logo} aria-hidden="true">
-          {ASCII_LOGO}
-        </pre>
+        <div className={styles.masthead}>
+          <h1 className={styles.mastheadName}>Qwen Code</h1>
+          <div className={styles.mastheadRule} aria-hidden="true" />
+          <div className={styles.mastheadTagline}>
+            {t('welcome.tagline')}
+            {version && ` · v${version}`}
+          </div>
+        </div>
 
         <div className={styles.panel}>
-          <div className={styles.titleRow}>
-            <span className={styles.title}>{'>_ Qwen Code'}</span>
-            {version && <span className={styles.version}>(v{version})</span>}
-          </div>
-
-          <div className={styles.subtitle} aria-hidden="true">
-            &nbsp;
-          </div>
-
-          <div className={styles.metaLine}>
-            <span className={styles.terminalLabel}>Web terminal</span>
-            <span className={styles.sep}>|</span>
-            <span className={styles.model}>{model}</span>
-            <span className={styles.modelHint}>{t('welcome.changeModel')}</span>
-          </div>
-
-          <div className={styles.metaLine}>
-            <span>{mode}</span>
-            <span className={styles.modelHint}>{t('welcome.modeHint')}</span>
-          </div>
-
-          {displayPath && (
-            <div className={styles.cwd} title={cwd}>
-              {displayPath}
-            </div>
-          )}
+          <dl className={styles.colophon}>
+            <dt className={styles.colophonLabel}>{t('welcome.label.model')}</dt>
+            <dd className={styles.colophonValue}>{model}</dd>
+            <dt className={styles.colophonLabel}>{t('welcome.label.mode')}</dt>
+            <dd className={styles.colophonValue}>{mode}</dd>
+            {displayPath && (
+              <>
+                <dt className={styles.colophonLabel}>
+                  {t('welcome.label.dir')}
+                </dt>
+                <dd className={styles.colophonValue} title={cwd}>
+                  {displayPath}
+                </dd>
+              </>
+            )}
+          </dl>
         </div>
       </div>
 

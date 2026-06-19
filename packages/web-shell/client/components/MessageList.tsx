@@ -26,6 +26,8 @@ import { ParallelAgentsGroup } from './messages/tools/ParallelAgentsGroup';
 import { ToolApproval } from './messages/ToolApproval';
 import { AskUserQuestion } from './messages/AskUserQuestion';
 import { toolContainsCallId } from './messages/toolFormatting';
+import { metricsText, processLabel } from './messages/turnSummary';
+import { useI18n } from '../i18n';
 import styles from './MessageList.module.css';
 
 interface MessageListProps {
@@ -98,6 +100,16 @@ export type DisplayItem =
        * collapsible; drives the prompt-row expand/collapse toggle.
        */
       collapse?: TurnCollapseHead;
+      /**
+       * Process-drawer row: an expanded turn's intermediate step, rendered
+       * inside the drawer with a left timeline rail.
+       */
+      drawer?: boolean;
+      /**
+       * This drawer row is mid auto-collapse — kept rendered for one fade-out
+       * beat before the fold removes it, so the process doesn't just blink out.
+       */
+      collapsing?: boolean;
     }
   | {
       type: 'parallel_agents';
@@ -108,6 +120,10 @@ export type DisplayItem =
        * box reveals its time on hover exactly like a standalone message row.
        */
       timestamp?: number;
+      /** Process drawer: see the message variant's `drawer`. */
+      drawer?: boolean;
+      /** Mid auto-collapse fade-out; see the message variant. */
+      collapsing?: boolean;
     };
 
 function isAgentOnlyToolGroup(msg: Message): boolean {
@@ -317,6 +333,19 @@ export interface ApplyTurnCollapseOptions {
   pendingApprovalCallId?: string | null;
   /** Master switch; when false the items pass through untouched. */
   enabled: boolean;
+  /**
+   * Maps a drawered row to its step-kind keys (`thinking` / `tool` / `agent` /
+   * `plan`; a multi-tool group yields one key per tool) so the reducer can tally
+   * per-kind counts for the summary bar. Returns null for rows that aren't a
+   * counted step (key rows, handled by `noteCount`).
+   */
+  stepKinds?: (item: DisplayItem) => string[] | null;
+  /**
+   * A turn that just auto-collapsed and is briefly animating its process drawer
+   * out. Its drawer rows are still emitted (tagged `collapsing`) for one
+   * fade-out beat, instead of vanishing the instant it folds.
+   */
+  collapsingTurnId?: string | null;
 }
 
 function isAssistantAnswer(item: DisplayItem): boolean {
@@ -333,9 +362,11 @@ function isAssistantAnswer(item: DisplayItem): boolean {
 }
 
 /**
- * A turn's hideable "steps": tool activity, plans, and mid-turn assistant text.
- * The final answer and any system/shell/insight rows (errors, cancellations,
- * command output) are kept visible even when the turn is collapsed.
+ * Whether a row is a routine "step" (tool activity, plans, mid-turn assistant
+ * text) as opposed to a key row (system/shell/insight: errors, cancellations,
+ * command output) or the final answer. In the drawer model every non-answer row
+ * folds away regardless; this only distinguishes routine steps from key rows so
+ * the latter can be tallied into the summary's note badge (`noteCount`).
  */
 function isHideableStep(item: DisplayItem, isFinalAnswer: boolean): boolean {
   if (item.type === 'parallel_agents') return true;
@@ -444,6 +475,8 @@ export function applyTurnCollapse(
     isResponding,
     pendingApprovalCallId,
     enabled,
+    stepKinds,
+    collapsingTurnId,
   }: ApplyTurnCollapseOptions,
 ): DisplayItem[] {
   if (!enabled || items.length === 0) return items;
@@ -487,14 +520,31 @@ export function applyTurnCollapse(
       }
     }
 
-    let hiddenCount = 0;
+    // The latest assistant answer always sits outside the drawer — including
+    // while it streams — so it never starts inside the drawer (with a left rail)
+    // and then jumps out when the turn completes.
+    const finalOutsideIdx = answerIdx;
+
+    let drawerCount = 0; // every row that goes into the drawer
+    let noteCount = 0; // drawered key rows (errors/shell/system)
+    const summary: Record<string, number> = {}; // per-kind step counts
     let lastStepTs: number | undefined;
     let inputTokens = 0;
     let outputTokens = 0;
     let cachedTokens = 0;
     let hasUsage = false;
     for (let i = start + 1; i <= end; i++) {
-      if (isHideableStep(items[i], i === answerIdx)) hiddenCount++;
+      const hideable = isHideableStep(items[i], i === answerIdx);
+      if (i !== finalOutsideIdx) {
+        drawerCount++;
+        if (!hideable) noteCount++;
+        if (stepKinds) {
+          const kinds = stepKinds(items[i]);
+          if (kinds) {
+            for (const kind of kinds) summary[kind] = (summary[kind] ?? 0) + 1;
+          }
+        }
+      }
       const ts = itemTimestamp(items[i]);
       if (ts !== undefined) {
         lastStepTs = lastStepTs === undefined ? ts : Math.max(lastStepTs, ts);
@@ -517,7 +567,7 @@ export function applyTurnCollapse(
         : undefined;
     const hasMetrics = hasUsage || elapsedMs !== undefined;
 
-    if (hasPendingApproval || (hiddenCount === 0 && !hasMetrics)) {
+    if (hasPendingApproval || (drawerCount === 0 && !hasMetrics)) {
       // Nothing to add: the inline approve/reject UI must stay reachable, or the
       // turn has neither foldable steps nor a measured metric. Emit it untouched.
       for (let i = start; i <= end; i++) result.push(items[i]);
@@ -525,11 +575,13 @@ export function applyTurnCollapse(
     }
 
     // A turn with foldable steps gets a chevron and defaults to expanded while
-    // streaming, collapsed once complete. A step-less turn (e.g. a plain "hi"
-    // reply) has nothing to fold, so it stays expanded and shows a chevron-less
-    // metrics line. An explicit user toggle always wins.
+    // streaming, collapsed once complete (the whole turn stays open until the
+    // response finishes — folding mid-stream churns the virtualized layout). A
+    // step-less turn (e.g. a plain "hi" reply) has nothing to fold, so it stays
+    // expanded and shows a chevron-less metrics line. An explicit user toggle
+    // always wins.
     const expanded =
-      hiddenCount === 0
+      drawerCount === 0
         ? true
         : overrides.has(turnId)
           ? (overrides.get(turnId) as boolean)
@@ -543,7 +595,9 @@ export function applyTurnCollapse(
       collapse: {
         turnId,
         collapsed,
-        hiddenCount,
+        hiddenCount: drawerCount,
+        ...(noteCount > 0 ? { noteCount } : {}),
+        ...(Object.keys(summary).length > 0 ? { summary } : {}),
         ...(elapsedMs !== undefined ? { elapsedMs } : {}),
         ...(hasUsage ? { inputTokens, outputTokens } : {}),
         ...(cachedTokens > 0 ? { cachedTokens } : {}),
@@ -553,32 +607,43 @@ export function applyTurnCollapse(
       },
     });
 
-    if (!collapsed) {
-      for (let i = start + 1; i <= end; i++) result.push(items[i]);
-      continue;
-    }
-
-    // Collapsed: drop the hideable steps; keep the final answer (its own
-    // thinking stripped) and any non-step rows (errors, cancellations, command
-    // output) in their original places. On an active turn the "answer" is still
-    // streaming, so fold it away too rather than strand a provisional line.
-    for (let i = start + 1; i <= end; i++) {
-      const item = items[i];
-      if (i === answerIdx && isActiveTurn) continue;
-      if (isHideableStep(item, i === answerIdx)) continue;
+    // The final answer sits outside the fold. While collapsed its own thinking is
+    // stripped so only the conclusion shows; expanded it keeps its thinking (the
+    // process is on display anyway).
+    const stripThinking = (item: DisplayItem): DisplayItem => {
       if (
-        i === answerIdx &&
         item.type === 'message' &&
         item.message.role === 'assistant' &&
         item.message.thinking
       ) {
-        result.push({
+        return {
           type: 'message',
           key: item.key,
           message: { ...item.message, thinking: undefined },
-        });
-      } else {
-        result.push(item);
+        };
+      }
+      return item;
+    };
+
+    // Process drawer: nothing leaks out. Collapsed shows only the final answer;
+    // expanded tags every other row so it renders inside the drawer. A turn mid
+    // auto-collapse keeps emitting its drawer rows (tagged `collapsing`) for one
+    // fade-out beat before they're dropped.
+    const animatingCollapse = collapsed && turnId === collapsingTurnId;
+    if (collapsed && !animatingCollapse) {
+      if (finalOutsideIdx >= 0)
+        result.push(stripThinking(items[finalOutsideIdx]));
+    } else {
+      for (let i = start + 1; i <= end; i++) {
+        if (i === finalOutsideIdx) {
+          result.push(collapsed ? stripThinking(items[i]) : items[i]);
+        } else {
+          result.push({
+            ...items[i],
+            drawer: true,
+            ...(animatingCollapse ? { collapsing: true } : {}),
+          });
+        }
       }
     }
   }
@@ -697,6 +762,29 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
         return next;
       });
     }, []);
+    const { t } = useI18n();
+    // Classifies a drawered row into step-kind keys for the process summary
+    // counts. A multi-tool group yields one key per tool; sub-agent tools and
+    // parallel-agent groups count as 'agent'. Key rows (errors/shell/system)
+    // return null — they're surfaced by the separate note badge.
+    const stepKinds = useCallback((item: DisplayItem): string[] | null => {
+      if (item.type === 'parallel_agents') {
+        return item.agents.map(() => 'agent');
+      }
+      const m = item.message;
+      if (m.role === 'tool_group') {
+        return m.tools.map((tool) =>
+          isSubAgentToolCall(tool) ? 'agent' : 'tool',
+        );
+      }
+      if (m.role === 'plan') return ['plan'];
+      if (m.role === 'assistant') return ['thinking'];
+      return null;
+    }, []);
+    // The turn whose process drawer is mid auto-collapse fade-out.
+    const [collapsingTurnId, setCollapsingTurnId] = useState<string | null>(
+      null,
+    );
     const visibleItems = useMemo(
       () =>
         applyTurnCollapse(displayItems, {
@@ -704,6 +792,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
           isResponding,
           pendingApprovalCallId: pendingApproval?.toolCallId ?? null,
           enabled: collapseEnabled,
+          stepKinds,
+          collapsingTurnId,
         }),
       [
         displayItems,
@@ -711,10 +801,33 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
         isResponding,
         pendingApproval?.toolCallId,
         collapseEnabled,
+        stepKinds,
+        collapsingTurnId,
       ],
     );
 
     const containerRef = useRef<HTMLDivElement>(null);
+
+    // When a turn finishes responding, play a brief drawer fade-out before the
+    // fold drops the rows: mark it collapsing, then clear so the reducer stops
+    // emitting its drawer rows. useLayoutEffect so the marker is set before
+    // paint — the drawer never blinks out for a frame first.
+    const prevRespondingRef = useRef(isResponding);
+    useLayoutEffect(() => {
+      const was = prevRespondingRef.current;
+      prevRespondingRef.current = isResponding;
+      if (!was || isResponding) return;
+      let lastTurnId: string | undefined;
+      for (const item of displayItems) {
+        if (item.type === 'message' && item.message.role === 'user') {
+          lastTurnId = item.message.id;
+        }
+      }
+      if (!lastTurnId) return;
+      setCollapsingTurnId(lastTurnId);
+      const timer = setTimeout(() => setCollapsingTurnId(null), 200);
+      return () => clearTimeout(timer);
+    }, [isResponding, displayItems]);
 
     // ── Scroll-follow state ──────────────────────────────────────────────
     //
@@ -851,6 +964,110 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
       useAnimationFrameWithResizeObserver: true,
     });
 
+    // Sticky prompt: the current turn's user message pinned at the top of the
+    // viewport once its real row has scrolled off, as a context anchor. Rendered
+    // as an overlay OUTSIDE the scroll flow (not a sticky child) so it never
+    // shifts the virtualizer's measured offsets.
+    const stickyRef = useRef<HTMLButtonElement>(null);
+    const [stickyTurn, setStickyTurn] = useState<{
+      turnId: string;
+      text: string;
+      index: number;
+      collapse?: TurnCollapseHead;
+    } | null>(null);
+    // Push-out offset (px): as the NEXT turn's prompt nears the top, the pinned
+    // bar slides up by this much so two prompts never stack — the incoming
+    // prompt shoves the old anchor off, iOS section-header style.
+    const [stickyPush, setStickyPush] = useState(0);
+    const refreshSticky = useCallback(() => {
+      const el = containerRef.current;
+      if (!el) {
+        setStickyTurn(null);
+        setStickyPush(0);
+        return;
+      }
+      const scrollTop = el.scrollTop;
+      let active: {
+        turnId: string;
+        text: string;
+        index: number;
+        start: number;
+        collapse?: TurnCollapseHead;
+      } | null = null;
+      let nextStart: number | undefined;
+      for (let i = 0; i < visibleItems.length; i++) {
+        const item = visibleItems[i];
+        if (item.type !== 'message' || item.message.role !== 'user') continue;
+        const content = item.message.content;
+        const text = typeof content === 'string' ? content : '';
+        if (!text) continue;
+        const fullIndex = headerOffset + i;
+        let start: number | undefined;
+        if (useVirtualScroll) {
+          start = virtualizer.measurementsCache?.[fullIndex]?.start;
+        } else {
+          const row = el.querySelector(`[data-index="${fullIndex}"]`);
+          start = row instanceof HTMLElement ? row.offsetTop : undefined;
+        }
+        if (start == null) continue;
+        // Anchors are in document order; the last one at/above the top is the
+        // active turn, and the first one below the top is the incoming one.
+        if (start <= scrollTop + 1) {
+          active = {
+            turnId: item.message.id,
+            text,
+            index: fullIndex,
+            start,
+            collapse: item.collapse,
+          };
+        } else {
+          nextStart = start;
+          break;
+        }
+      }
+      // Only surface once the real prompt row has scrolled (mostly) off the top.
+      const next =
+        active && scrollTop - active.start > 8
+          ? {
+              turnId: active.turnId,
+              text: active.text,
+              index: active.index,
+              collapse: active.collapse,
+            }
+          : null;
+      // Push-out: when the incoming prompt is within one bar-height of the top,
+      // shove the pinned bar up by the overlap so they never coexist.
+      const barHeight = stickyRef.current?.offsetHeight || 52;
+      const push =
+        next && nextStart !== undefined
+          ? Math.max(0, barHeight - (nextStart - scrollTop))
+          : 0;
+      setStickyPush((prev) => (prev === push ? prev : push));
+      setStickyTurn((prev) =>
+        prev?.turnId === next?.turnId &&
+        prev?.index === next?.index &&
+        prev?.collapse === next?.collapse
+          ? prev
+          : next,
+      );
+    }, [visibleItems, headerOffset, useVirtualScroll, virtualizer]);
+
+    // handleScroll keeps stable `[]` deps; reach the latest refreshSticky via ref.
+    const refreshStickyRef = useRef(refreshSticky);
+    refreshStickyRef.current = refreshSticky;
+
+    const handleStickyClick = useCallback(() => {
+      const target = stickyTurn;
+      if (!target) return;
+      if (useVirtualScroll) {
+        virtualizer.scrollToIndex(target.index, { align: 'start' });
+      } else {
+        containerRef.current
+          ?.querySelector(`[data-index="${target.index}"]`)
+          ?.scrollIntoView({ block: 'start' });
+      }
+    }, [stickyTurn, useVirtualScroll, virtualizer]);
+
     // Imperative scroll-to-message (e.g. the floating TodoPanel's "show in
     // transcript" button) with a brief highlight on the target row.
     const [flashKey, setFlashKey] = useState<string | null>(null);
@@ -975,6 +1192,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
       if (distanceFromBottom < 30) {
         shouldFollow.current = true;
       }
+      refreshStickyRef.current();
     }, []);
 
     // Clear screen (e.g. /clear) → reset to follow mode, drop stale per-turn
@@ -1088,19 +1306,35 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
         const item = visibleItems[itemIndex];
         if (!item) return null;
 
+        // Process drawer: wrap an expanded turn's intermediate rows in a
+        // left-railed container so they read as one bounded "process" block.
+        const inDrawer = item.drawer === true;
+        const withDrawer = (node: ReactNode) =>
+          inDrawer ? (
+            <div
+              className={`${styles.drawerRow}${
+                item.collapsing ? ` ${styles.drawerRowCollapsing}` : ''
+              }`}
+            >
+              {node}
+            </div>
+          ) : (
+            node
+          );
+
         if (item.type === 'parallel_agents') {
-          return (
+          return withDrawer(
             <MessageTimestamp timestamp={item.timestamp}>
               <ParallelAgentsGroup
                 agents={item.agents}
                 pendingApproval={pendingApproval}
                 onConfirm={onConfirm}
               />
-            </MessageTimestamp>
+            </MessageTimestamp>,
           );
         }
 
-        return (
+        return withDrawer(
           <MessageItem
             message={item.message}
             pendingApproval={pendingApproval}
@@ -1113,7 +1347,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
             shellOutputMaxLines={shellOutputMaxLines}
             collapse={item.collapse}
             onToggleCollapse={handleToggleCollapse}
-          />
+          />,
         );
       },
       [
@@ -1158,52 +1392,104 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
       }
     }, [totalVirtualSize, messages, totalCount, catchingUp, scrollToBottom]);
 
+    // Recompute the sticky prompt when content height, layout, or theme changes
+    // (streaming, expand/collapse, theme switch) — not just on scroll.
+    useEffect(() => {
+      refreshSticky();
+    }, [refreshSticky, totalVirtualSize]);
+
     return (
-      <div ref={containerRef} className={styles.list} onScroll={handleScroll}>
-        {useVirtualScroll ? (
-          <div
-            style={{
-              height: totalVirtualSize,
-              width: '100%',
-              position: 'relative',
-            }}
-          >
-            {virtualItems.map((virtualRow) => (
-              <div
-                key={virtualRow.key}
-                data-index={virtualRow.index}
-                ref={virtualizer.measureElement}
-                className={
-                  flashKey === String(virtualRow.key)
-                    ? styles.rowFlash
-                    : undefined
-                }
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
-              >
-                {renderVirtualItem(virtualRow.index)}
-              </div>
-            ))}
-          </div>
-        ) : (
-          Array.from({ length: totalCount }, (_, index) => {
-            const key = getItemKey(index);
+      <div className={styles.listWrap}>
+        {stickyTurn &&
+          (() => {
+            const c = stickyTurn.collapse;
+            const hasProcess =
+              !!c &&
+              (!!(c.summary && Object.keys(c.summary).length) || !!c.noteCount);
+            const m = c ? metricsText(c, c.elapsedMs, t) : '';
             return (
-              <div
-                key={key}
-                data-index={index}
-                className={flashKey === key ? styles.rowFlash : undefined}
+              <button
+                ref={stickyRef}
+                type="button"
+                className={styles.stickyTurn}
+                style={stickyPush ? { top: `${-stickyPush}px` } : undefined}
+                onClick={handleStickyClick}
+                title={stickyTurn.text}
+                aria-label={`${t('turn.jumpToPrompt')}: ${stickyTurn.text}`}
               >
-                {renderVirtualItem(index)}
-              </div>
+                <span className={styles.stickyPrompt}>
+                  <span className={styles.stickyChevron} aria-hidden="true">
+                    ›
+                  </span>
+                  <span className={styles.stickyText}>{stickyTurn.text}</span>
+                  {/* Process-less turn: metrics ride on the prompt line, right. */}
+                  {!hasProcess && m && (
+                    <span className={styles.stickyPromptMetrics}>{m}</span>
+                  )}
+                </span>
+                {hasProcess && c && (
+                  <span className={styles.stickyProcess}>
+                    <span className={styles.stickyProcessLabel}>
+                      {processLabel(c, t)}
+                    </span>
+                    {m && (
+                      <span
+                        className={`${styles.stickyMetrics} ${styles.stickyMetricsRight}`}
+                      >
+                        {m}
+                      </span>
+                    )}
+                  </span>
+                )}
+              </button>
             );
-          })
-        )}
+          })()}
+        <div ref={containerRef} className={styles.list} onScroll={handleScroll}>
+          {useVirtualScroll ? (
+            <div
+              style={{
+                height: totalVirtualSize,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              {virtualItems.map((virtualRow) => (
+                <div
+                  key={virtualRow.key}
+                  data-index={virtualRow.index}
+                  ref={virtualizer.measureElement}
+                  className={
+                    flashKey === String(virtualRow.key)
+                      ? styles.rowFlash
+                      : undefined
+                  }
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  {renderVirtualItem(virtualRow.index)}
+                </div>
+              ))}
+            </div>
+          ) : (
+            Array.from({ length: totalCount }, (_, index) => {
+              const key = getItemKey(index);
+              return (
+                <div
+                  key={key}
+                  data-index={index}
+                  className={flashKey === key ? styles.rowFlash : undefined}
+                >
+                  {renderVirtualItem(index)}
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     );
   },

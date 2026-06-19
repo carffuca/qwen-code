@@ -300,11 +300,19 @@ export function SubAgentPanel({
     (taskToolCalls && taskToolCalls.length > 0)
   );
   const showTabs = hasResult && hasTools;
+  // Expandable whenever there's a result or tool calls to reveal. The chevron
+  // sits at the trailing edge so the leading status tick is the row's primary
+  // marker (matches the tool-group rows).
+  const expandable = hasResult || hasTools;
 
   return (
     <div className={inline ? undefined : styles.panel}>
       {!hideHeader && (
-        <div className={styles.header} onClick={() => setExpanded(!expanded)}>
+        <div
+          className={styles.header}
+          onClick={expandable ? () => setExpanded(!expanded) : undefined}
+          style={expandable ? undefined : { cursor: 'default' }}
+        >
           <StatusIcon status={displayStatus} />
           <span className={chromeStyles.lineName}>{agentType}:</span>
           {description && (
@@ -315,8 +323,13 @@ export function SubAgentPanel({
           )}
           {elapsed && <span className={styles.meta}>· {elapsed}</span>}
           {tokens && <span className={styles.meta}>· {tokens}</span>}
-          {!isComplete && (
-            <span className={styles.toggle}>{expanded ? '▼' : '▶'}</span>
+          {expandable && (
+            <span
+              className={chromeStyles.lineToggleTrailing}
+              aria-hidden="true"
+            >
+              {expanded ? '▾' : '▸'}
+            </span>
           )}
         </div>
       )}

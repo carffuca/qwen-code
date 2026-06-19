@@ -1,18 +1,28 @@
-.message {
+/*
+ * Turn head: the user's prompt on top, the process bar (toggle + metrics) fused
+ * directly below (hairline seam). Kept visually light — a faint fill, rounded
+ * frame, and a thin faded accent rail — so the prompt reads as context, not the
+ * loudest thing on the page; the assistant's answer / data region stays focal.
+ */
+.turnHead {
   margin-bottom: 12px;
+  border-radius: 8px;
+  overflow: hidden;
+  border-left: 2px solid
+    color-mix(in srgb, var(--accent-color) 42%, transparent);
+  background: var(--subtle-bg);
+}
+
+.turnHeadCollapsed {
+  margin-bottom: 2px;
+}
+
+/* Prompt content row inside the card. */
+.message {
   display: flex;
   gap: 8px;
   align-items: baseline;
-}
-
-/*
- * Collapsed turn: tighten the gap below the prompt+toggle seam so the fold
- * summary sits snug against the final answer rather than carrying a full
- * inter-message gap. Scoped to the collapsed state — an expanded turn keeps the
- * normal 12px down to its first revealed step.
- */
-.message.collapsedHead {
-  margin-bottom: 2px;
+  padding: 8px 12px;
 }
 
 .prefix {
@@ -29,50 +39,95 @@
   word-break: break-word;
 }
 
+/* Metrics riding on the prompt line for a process-less turn — pushed right so
+   they stay consistent with the process-bar metrics of other turns. */
+.promptMetrics {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 12px;
+  align-self: baseline;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+  color: var(--text-dimmed);
+}
+
 /*
- * Per-turn fold seam: its own line below the prompt text, clear of the hover
- * timestamp pinned to the row's top-right. Only the chevron button toggles the
- * turn; the trailing summary is inert text. `fit-content` keeps the row hugging
- * its content rather than spanning the width.
+ * Process bar fused below the prompt: full width with a faint top seam. The
+ * toggle reads as a real control (accent color, hover pill, underline); the
+ * trailing metrics are inert and right-aligned.
  */
 .collapseRow {
   display: flex;
   align-items: baseline;
-  width: fit-content;
-  margin-top: 2px;
-  font-size: 12px;
-  line-height: 1.2;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 12px;
+  border-top: 1px solid var(--border-color);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+  color: var(--text-dimmed);
 }
 
-/*
- * The expand/collapse control: the chevron plus the step count, together, so
- * the click target is comfortably sized (not a lone glyph). Only this toggles
- * the turn — the trailing metrics are inert.
- */
 .collapseToggle {
   flex-shrink: 0;
-  background: none;
+  margin-left: -6px;
+  padding: 1px 6px;
   border: none;
-  padding: 0;
-  color: var(--text-dimmed);
+  border-radius: 4px;
+  background: none;
   font: inherit;
+  letter-spacing: 0.03em;
+  color: var(--accent-color);
   white-space: nowrap;
   cursor: pointer;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
 }
 
 .collapseToggle:hover {
-  color: var(--text-secondary);
+  background: var(--subtle-bg-strong);
+  color: var(--accent-hover);
+  text-decoration: underline;
 }
 
-/*
- * Duration · tokens. Inert (no fold affordance) and identical collapsed vs
- * expanded, so toggling never reflows the row. Carries its own leading "·"
- * separator after the toggle.
- */
 .collapseMeta {
   color: var(--text-dimmed);
   white-space: nowrap;
   cursor: default;
+}
+
+/* Right-align metrics next to the process label. */
+.collapseMetaRight {
+  margin-left: auto;
+  padding-left: 12px;
+}
+
+/*
+ * Pulse the summary bar when the process auto-collapses into it, so the user
+ * sees where the steps were tucked away. Accent-tinted flash that fades out.
+ */
+.collapsePulse {
+  animation: summary-pulse 1400ms ease-out;
+}
+
+@keyframes summary-pulse {
+  0%,
+  35% {
+    background: color-mix(in srgb, var(--accent-color) 32%, transparent);
+    color: var(--accent-hover);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collapsePulse {
+    animation-duration: 1ms;
+  }
 }
 
 .images {

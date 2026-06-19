@@ -49,8 +49,27 @@ export interface TurnCollapseHead {
   turnId: string;
   /** whether the turn's intermediate steps are currently hidden. */
   collapsed: boolean;
-  /** number of display rows hidden behind the toggle while collapsed. */
+  /**
+   * Number of rows that fold into the process drawer (every row of the turn
+   * except its final answer — routine steps and key rows alike). Drives the
+   * toggle's "N steps" count; 0 means a step-less turn with no foldable rows.
+   */
   hiddenCount: number;
+  /**
+   * Process drawer: how many of the drawered rows are key rows (errors,
+   * cancellations, shell/system output). Surfaced as a badge on the summary bar
+   * so a collapsed turn still hints that the drawer holds more than routine
+   * steps. Undefined or 0 when there are none.
+   */
+  noteCount?: number;
+  /**
+   * Process drawer: per-kind counts of the drawered steps (`thinking` / `tool`
+   * / `agent` / `plan`). Lets the collapsed summary read "过程 · 思考 2 · 工具 3"
+   * so the turn's activity is legible without expanding, without growing
+   * unbounded as tools pile up. Key rows (errors/shell/system) are counted by
+   * `noteCount` instead.
+   */
+  summary?: Record<string, number>;
   /**
    * Wall-clock span from the prompt to the turn's last step, in ms. Derived
    * from block timestamps (so it survives replay); undefined when either end

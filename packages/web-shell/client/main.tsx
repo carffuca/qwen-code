@@ -12,7 +12,11 @@ import {
   removeDaemonTokenFromUrl,
 } from './config/daemon';
 import { normalizeLanguage, type WebShellLanguage } from './i18n';
-import { WebShellThemeId, type WebShellTheme } from './themeContext';
+import {
+  WebShellThemeId,
+  WEB_SHELL_THEMES,
+  type WebShellTheme,
+} from './themeContext';
 import 'katex/dist/katex.min.css';
 import './styles/standalone.css';
 
@@ -24,10 +28,9 @@ const LANGUAGE_STORAGE_KEY = 'qwen-code-web-shell-language';
 const THEME_STORAGE_KEY = 'qwen-code-web-shell-theme';
 
 function parseTheme(value: string | null): WebShellTheme | undefined {
-  if (value === WebShellThemeId.Dark || value === WebShellThemeId.Light) {
-    return value;
-  }
-  return undefined;
+  return value && (WEB_SHELL_THEMES as readonly string[]).includes(value)
+    ? (value as WebShellTheme)
+    : undefined;
 }
 
 function getThemeFromUrl(): WebShellTheme | undefined {
@@ -52,7 +55,7 @@ function storeTheme(theme: WebShellTheme): void {
 }
 
 function getInitialTheme(): WebShellTheme {
-  return getThemeFromUrl() ?? readStoredTheme() ?? WebShellThemeId.Dark;
+  return getThemeFromUrl() ?? readStoredTheme() ?? WebShellThemeId.Light;
 }
 
 function readStoredLanguage(): WebShellLanguage | undefined {

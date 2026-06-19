@@ -1,6 +1,7 @@
 .content {
-  font-size: 14px;
-  line-height: 1.5;
+  font-family: var(--font-prose);
+  font-size: var(--prose-size);
+  line-height: var(--prose-leading);
   color: var(--text-primary);
   min-width: 0;
   max-width: 100%;
@@ -12,7 +13,9 @@
 .content h3,
 .content h4 {
   margin: 12px 0 6px;
-  font-weight: 700;
+  font-family: var(--font-heading);
+  font-weight: var(--heading-weight);
+  letter-spacing: var(--heading-tracking);
   color: var(--text-primary);
 }
 
@@ -48,15 +51,20 @@
 
 .content blockquote {
   margin: 6px 0;
-  padding: 2px 10px;
-  border-left: 3px solid var(--border-color);
+  padding: 2px 14px;
+  border-left: 3px solid var(--quote-accent);
+  font-style: var(--quote-style);
   color: var(--text-secondary);
 }
 
 .content hr {
   border: none;
-  border-top: 1px solid var(--border-color);
-  margin: 12px 0;
+  height: var(--rule-height);
+  width: var(--rule-width);
+  margin: var(--rule-margin) auto;
+  background: var(--rule-image);
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 .inlineCode {
@@ -70,7 +78,9 @@
 
 .link {
   color: var(--accent-color);
-  text-decoration: none;
+  text-decoration: var(--link-decoration);
+  text-underline-offset: var(--link-offset);
+  text-decoration-thickness: 1px;
 }
 
 .link:hover {
@@ -147,7 +157,7 @@
 }
 
 .codeBlockContent {
-  padding: 10px 14px;
+  margin: 0;
   overflow-x: auto;
   font-size: 13px;
   line-height: 1.5;
@@ -155,8 +165,22 @@
   max-width: 100%;
 }
 
-.codeBlockContent pre {
+/*
+ * The single content child carries padding + background, sized to the content
+ * (min-width:100% to fill the block, width:max-content to grow with long lines)
+ * so the background spans the full horizontal scroll width instead of cutting
+ * off when scrolled (visible on the paper-toned theme). This targets both
+ * shapes: the Shiki <pre> (inside a div container) and the plain fallback's
+ * <code> (where .codeBlockContent is itself the <pre>).
+ */
+.codeBlockContent > * {
+  display: block;
+  box-sizing: border-box;
+  min-width: 100%;
+  width: max-content;
   margin: 0;
+  padding: 10px 14px;
+  background: var(--editor-bg);
 }
 
 .codeBlockContent code {
@@ -168,10 +192,9 @@
   white-space: pre;
 }
 
+/* Override Shiki's inline theme background so the block uses --editor-bg. */
 .codeBlockContent :global(.shiki) {
-  background: transparent !important;
-  padding: 0;
-  margin: 0;
+  background: var(--editor-bg) !important;
 }
 
 .codeBlockContent :global(.shiki) code {

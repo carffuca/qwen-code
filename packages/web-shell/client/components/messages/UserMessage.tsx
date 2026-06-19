@@ -3,6 +3,7 @@ import { PromptChevron } from '../PromptChevron';
 import { isSafeImageSrc } from './Markdown';
 import { useI18n } from '../../i18n';
 import type { TurnCollapseHead } from '../../adapters/types';
+import { metricsText, processLabel } from './turnSummary';
 import styles from './UserMessage.module.css';
 
 interface UserMessageImage {
@@ -16,56 +17,6 @@ interface UserMessageProps {
   /** When set, renders a toggle that folds/unfolds this turn's steps. */
   collapse?: TurnCollapseHead;
   onToggleCollapse?: (turnId: string) => void;
-}
-
-type Translate = (key: string, vars?: Record<string, string | number>) => string;
-
-/** Compact turn duration: `820ms` · `12.4s` · `1m 5s`. */
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${Math.max(0, Math.round(ms))}ms`;
-  const totalSeconds = ms / 1000;
-  if (totalSeconds < 60) return `${totalSeconds.toFixed(1)}s`;
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = Math.round(totalSeconds - minutes * 60);
-  return `${minutes}m ${seconds}s`;
-}
-
-/** Token count abbreviated past 1k (e.g. `3.1k`), matching the context badge. */
-function formatTokenCount(tokens: number): string {
-  return tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}k` : `${tokens}`;
-}
-
-/**
- * Inert metrics shown after the fold toggle: duration and `↑input ↓output`
- * tokens, each present only when measured. Cached reads are a subset of input,
- * shown parenthetically on ↑input with their share ("↑3.1k (2.8k cached, 90%)")
- * so they read as "of which N cached", not an additive figure. e.g.
- * `12.4s · ↑3.1k (2.8k cached, 90%) ↓5.1k`.
- */
-function metricsText(
-  collapse: TurnCollapseHead,
-  elapsedMs: number | undefined,
-  t: Translate,
-): string {
-  const parts: string[] = [];
-  if (elapsedMs !== undefined) {
-    parts.push(formatDuration(elapsedMs));
-  }
-  if (collapse.inputTokens !== undefined && collapse.outputTokens !== undefined) {
-    const cachedTokens = collapse.cachedTokens ?? 0;
-    const cached =
-      cachedTokens > 0 && collapse.inputTokens > 0
-        ? ` (${formatTokenCount(cachedTokens)} ${t('turn.cached')}, ${Math.round(
-            (cachedTokens / collapse.inputTokens) * 100,
-          )}%)`
-        : '';
-    parts.push(
-      `↑${formatTokenCount(collapse.inputTokens)}${cached} ↓${formatTokenCount(
-        collapse.outputTokens,
-      )}`,
-    );
-  }
-  return parts.join(' · ');
 }
 
 /**
@@ -91,6 +42,28 @@ export const UserMessage = memo(function UserMessage({
   onToggleCollapse,
 }: UserMessageProps) {
   const { t } = useI18n();
+
+  // Pulse the summary bar only when the process *auto*-collapses (the model
+  // started its conclusion), so the user sees where the steps went. A manual
+  // toggle already ties the action to its result, so it doesn't pulse.
+  const collapsedNow = collapse?.collapsed;
+  const prevCollapsedRef = useRef(collapsedNow);
+  const userToggledRef = useRef(false);
+  const [collapsePulse, setCollapsePulse] = useState(false);
+  useEffect(() => {
+    const prev = prevCollapsedRef.current;
+    prevCollapsedRef.current = collapsedNow;
+    if (collapsedNow === true && prev === false) {
+      if (userToggledRef.current) {
+        userToggledRef.current = false; // manual collapse — consume, no pulse
+        return;
+      }
+      setCollapsePulse(true);
+      // Keep in sync with the summary-pulse CSS duration (1400ms).
+      const timer = setTimeout(() => setCollapsePulse(false), 1400);
+      return () => clearTimeout(timer);
+    }
+  }, [collapsedNow]);
 
   // A live turn ticks `now - liveStartedAt`; a completed turn shows its frozen
   // elapsedMs. The ref clamps the shown value monotonically so it never steps
@@ -120,14 +93,49 @@ export const UserMessage = memo(function UserMessage({
   const hasToggle = !!collapse && collapse.hiddenCount > 0;
   const metrics = collapse ? metricsText(collapse, displayElapsedMs, t) : '';
 
-  return (
-    <div
-      className={
-        collapse?.collapsed
-          ? `${styles.message} ${styles.collapsedHead}`
-          : styles.message
-      }
-    >
+  // Collapsed bar reads "过程 · 思考 2 · 工具 3" from per-kind step counts, so it
+  // conveys what the turn did without ballooning as tools pile up.
+  const turnLabel = collapse ? processLabel(collapse, t) : '';
+
+  // A process-less turn (no foldable steps) shows no second row — its metrics
+  // ride on the prompt line instead, so metrics always sit right and no
+  // empty-left row appears.
+  const promptMetrics = !hasToggle ? metrics : '';
+  const collapseRow =
+    collapse && onToggleCollapse && hasToggle ? (
+      <div className={styles.collapseRow}>
+        <button
+          type="button"
+          className={[
+            styles.collapseToggle,
+            collapsePulse && styles.collapsePulse,
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          onClick={() => {
+            userToggledRef.current = true;
+            onToggleCollapse(collapse.turnId);
+          }}
+          aria-expanded={!collapse.collapsed}
+          aria-label={
+            collapse.collapsed ? t('turn.expand') : t('turn.collapse')
+          }
+          title={collapse.collapsed ? t('turn.expand') : t('turn.collapse')}
+        >
+          {`${collapse.collapsed ? '▸' : '▾'} ${turnLabel}`}
+        </button>
+        {metrics && (
+          <span
+            className={`${styles.collapseMeta} ${styles.collapseMetaRight}`}
+          >
+            {metrics}
+          </span>
+        )}
+      </div>
+    ) : null;
+
+  const card = (
+    <div className={styles.message}>
       <span className={styles.prefix}>
         <PromptChevron />
       </span>
@@ -151,34 +159,25 @@ export const UserMessage = memo(function UserMessage({
           </div>
         )}
         {content}
-        {collapse && onToggleCollapse && (hasToggle || metrics) && (
-          <div className={styles.collapseRow}>
-            {hasToggle && (
-              <button
-                type="button"
-                className={styles.collapseToggle}
-                onClick={() => onToggleCollapse(collapse.turnId)}
-                aria-expanded={!collapse.collapsed}
-                aria-label={
-                  collapse.collapsed ? t('turn.expand') : t('turn.collapse')
-                }
-                title={
-                  collapse.collapsed ? t('turn.expand') : t('turn.collapse')
-                }
-              >
-                {`${collapse.collapsed ? '▸' : '▾'} ${t('turn.hiddenSteps', {
-                  count: collapse.hiddenCount,
-                })}`}
-              </button>
-            )}
-            {metrics && (
-              <span className={styles.collapseMeta}>
-                {hasToggle ? ` · ${metrics}` : metrics}
-              </span>
-            )}
-          </div>
-        )}
       </div>
+      {promptMetrics && (
+        <span className={styles.promptMetrics}>{promptMetrics}</span>
+      )}
+    </div>
+  );
+
+  // One card: the prompt on top, the process bar (toggle + metrics) fused below.
+  return (
+    <div
+      className={[
+        styles.turnHead,
+        collapse?.collapsed ? styles.turnHeadCollapsed : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      {card}
+      {collapseRow}
     </div>
   );
 });

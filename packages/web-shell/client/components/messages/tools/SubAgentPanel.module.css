@@ -31,12 +31,6 @@
   white-space: nowrap;
 }
 
-.toggle {
-  font-size: 10px;
-  color: var(--text-dimmed);
-  flex-shrink: 0;
-}
-
 .meta {
   font-size: 11px;
   color: var(--text-dimmed);

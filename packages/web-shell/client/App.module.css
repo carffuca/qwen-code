@@ -4,11 +4,57 @@
   --font-sans:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --radius: 6px;
+
+  /*
+   * Editorial typography / texture tokens — the single shared visual language
+   * for all themes. Serif prose, a three-dot section ornament, italic quotes,
+   * underlined links. Colors come from each theme's palette via var(--accent…),
+   * so dark and light share structure and differ only in hue. Code stays mono.
+   */
+  --font-prose: 'Iowan Old Style', 'Palatino', 'Palatino Linotype', Georgia,
+    'Songti SC', 'Noto Serif SC', 'Source Han Serif SC', serif;
+  --font-heading: 'Iowan Old Style', 'Palatino', Georgia, 'Songti SC',
+    'Noto Serif SC', serif;
+  --prose-size: 15px;
+  --prose-leading: 1.72;
+  --heading-weight: 700;
+  --heading-tracking: -0.012em;
+  /* Per-theme: light sets a warm paper grain; dark leaves it none for now. */
+  --paper-texture: none;
+  --quote-accent: var(--accent-color);
+  --quote-style: italic;
+  /* A subtle three-dot ornament instead of a bold rule — the classic editorial
+     section break, far less prominent than a solid line. */
+  --rule-image: radial-gradient(
+      circle at 5px 50%,
+      var(--accent-color) 1.6px,
+      transparent 2.2px
+    ),
+    radial-gradient(
+      circle at 19px 50%,
+      var(--accent-color) 1.6px,
+      transparent 2.2px
+    ),
+    radial-gradient(
+      circle at 33px 50%,
+      var(--accent-color) 1.6px,
+      transparent 2.2px
+    );
+  --rule-width: 38px;
+  --rule-height: 4px;
+  --rule-margin: 16px;
+  --link-decoration: underline;
+  --link-offset: 3px;
+  /* Drop shadow for floating surfaces (e.g. the sticky prompt). Neutral by
+     default; the light paper theme warms it. */
+  --float-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+
   position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--app-bg);
+  background-color: var(--app-bg);
+  background-image: var(--paper-texture);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 14px;
@@ -58,41 +104,65 @@
   --error-border: rgba(252, 129, 129, 0.2);
 }
 
+/*
+ * Light — a warm, editorial "paper" skin: aged-paper surfaces, ink text, a
+ * terracotta accent with ochre / olive / oxblood semantic colors, and a soft
+ * paper grain. Shares the editorial structure tokens from .app.
+ */
 .themeLight {
-  --app-bg: #fff;
-  --bg-primary: #ffffff;
-  --bg-secondary: #f7f7f2;
-  --bg-tertiary: #efeee8;
-  --bg-surface: #f5f4ed;
-  --border-color: #d8d6cc;
-  --text-primary: #22231f;
-  --text-secondary: #5f6259;
-  --text-dimmed: #8b8d84;
-  --accent-color: #0b66c3;
-  --accent-hover: #0756a6;
-  --success-color: #1f7a3a;
-  --warning-color: #9a6a00;
-  --error-color: #c0362c;
-  --user-color: #0a7a3d;
-  --assist-color: #7b4ab8;
+  --app-bg: #f4eee1;
+  --bg-primary: #f6f1e6;
+  --bg-secondary: #efe7d6;
+  --bg-tertiary: #e7ddc8;
+  --bg-surface: #f1ead9;
+  --border-color: #ddd2bc;
+  --text-primary: #221f1a;
+  --text-secondary: #6b6253;
+  --text-dimmed: #9c9079;
+  --accent-color: #b8553a;
+  --accent-hover: #993f28;
+  --success-color: #5a7d4f;
+  --warning-color: #b8841f;
+  --error-color: #a23b2c;
+  --user-color: #9c5a3c;
+  --assist-color: #7a4a6e;
   --welcome-logo-gradient: linear-gradient(
     90deg,
-    #0b66c3 0%,
-    #7357b8 52%,
-    #bd4f67 100%
+    #b8553a 0%,
+    #c98a2f 52%,
+    #7a4a6e 100%
   );
-  --editor-bg: #f7f7f2;
-  --msg-body-color: #0b6f3a;
-  --thinking-pre-color: #74788f;
-  --subtle-bg: rgba(32, 31, 25, 0.05);
-  --subtle-bg-strong: rgba(32, 31, 25, 0.08);
-  --info-bg: rgba(11, 102, 195, 0.08);
-  --info-border: rgba(11, 102, 195, 0.22);
-  --success-bg: rgba(31, 122, 58, 0.11);
-  --warning-bg: rgba(154, 106, 0, 0.1);
-  --warning-border: rgba(154, 106, 0, 0.24);
-  --error-bg: rgba(192, 54, 44, 0.1);
-  --error-border: rgba(192, 54, 44, 0.24);
+  --editor-bg: #efe7d6;
+  --msg-body-color: #57503f;
+  --thinking-pre-color: #8a7f6a;
+  --subtle-bg: rgba(80, 60, 30, 0.05);
+  --subtle-bg-strong: rgba(80, 60, 30, 0.09);
+  --info-bg: rgba(184, 85, 58, 0.08);
+  --info-border: rgba(184, 85, 58, 0.22);
+  --success-bg: rgba(90, 125, 79, 0.12);
+  --warning-bg: rgba(184, 132, 31, 0.1);
+  --warning-border: rgba(184, 132, 31, 0.24);
+  --error-bg: rgba(162, 59, 44, 0.1);
+  --error-border: rgba(162, 59, 44, 0.24);
+  /* Warm-brown shadow to match the paper palette. */
+  --float-shadow: 0 6px 16px rgba(60, 45, 20, 0.1);
+
+  /* Warm, organic paper grain stacked over the base color. */
+  --paper-texture: radial-gradient(
+      circle at 14% 16%,
+      rgba(150, 120, 60, 0.06),
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at 86% 72%,
+      rgba(150, 110, 70, 0.05),
+      transparent 48%
+    ),
+    radial-gradient(
+      circle at 60% 30%,
+      rgba(120, 90, 50, 0.035),
+      transparent 55%
+    );
 }
 
 .dialogOverlay {

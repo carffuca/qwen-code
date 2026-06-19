@@ -6,23 +6,20 @@ interface PromptChevronProps {
 }
 
 export function PromptChevron({ className, style }: PromptChevronProps) {
+  // Shared "user's turn" marker for both the input and sent messages — a serif
+  // "›" that reads editorial, identical in both places so the mental model holds.
   return (
-    <svg
+    <span
       className={className}
-      style={style}
-      width="0.6em"
-      height="0.85em"
-      viewBox="0 0 10 14"
-      fill="none"
+      style={{
+        fontFamily: 'var(--font-heading)',
+        fontSize: '1.35em',
+        lineHeight: 1,
+        ...style,
+      }}
       aria-hidden="true"
     >
-      <path
-        d="M1.5 1.5 L8 7 L1.5 12.5"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+      ›
+    </span>
   );
 }

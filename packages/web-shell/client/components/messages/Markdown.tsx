@@ -1,5 +1,5 @@
 import { memo, useEffect, useState, type ReactNode } from 'react';
-import { useTheme } from '../../themeContext';
+import { useTheme, type WebShellTheme } from '../../themeContext';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -92,6 +92,14 @@ export function isSafeImageSrc(url: string | undefined): boolean {
 const SHIKI_CACHE_MAX = 128;
 const shikiCache = new Map<string, string>();
 
+// Each app theme needs a Shiki theme with foreground tokens tuned for its
+// background. Light-background themes must NOT use a dark Shiki theme, or the
+// pale tokens wash out (the code block background comes from the app, not Shiki).
+const SHIKI_THEME_BY_APP_THEME: Record<WebShellTheme, string> = {
+  dark: 'github-dark-default',
+  light: 'vitesse-light',
+};
+
 function cachedCodeToHtml(
   code: string,
   lang: string,
@@ -126,7 +134,8 @@ function MermaidBlock({ code }: { code: string }) {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'diagram' | 'code'>('diagram');
   const [copied, setCopied] = useState(false);
-  const mermaidTheme = appTheme === 'light' ? 'default' : 'dark';
+  // Dark uses the dark Mermaid palette; light uses the light diagram palette.
+  const mermaidTheme = appTheme === 'dark' ? 'dark' : 'default';
 
   useEffect(() => {
     let cancelled = false;
@@ -250,7 +259,7 @@ function CodeBlock({
   const code = String(children).replace(/\n$/, '');
   const resolvedLang = SUPPORTED_LANGUAGES.has(lang) ? lang : 'text';
   const shikiTheme =
-    appTheme === 'light' ? 'github-light-default' : 'github-dark-default';
+    SHIKI_THEME_BY_APP_THEME[appTheme] ?? 'github-dark-default';
 
   useEffect(() => {
     if (lang === 'mermaid' || resolvedLang === 'text') {

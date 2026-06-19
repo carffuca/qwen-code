@@ -24,15 +24,15 @@
   min-width: 0;
 }
 
-/* Leading disclosure column. Rendered (blank) for every tool row so names stay
-   aligned; shows ▸/▾ only when the row can expand. */
-.lineToggle {
-  width: 12px;
+/* Disclosure chevron at the row's trailing edge (pushed right), leaving the
+   leading status tick as the row's sole primary marker. */
+.lineToggleTrailing {
   flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 10px;
   font-size: 10px;
   line-height: 1;
   color: var(--text-dimmed);
-  text-align: center;
   user-select: none;
 }
 
