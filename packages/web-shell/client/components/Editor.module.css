@@ -72,7 +72,7 @@
 }
 
 .modeAutoEdit {
-  border-left-color: #8b7530;
+  border-left-color: color-mix(in srgb, var(--assist-color) 55%, transparent);
 }
 
 .modeYolo {
