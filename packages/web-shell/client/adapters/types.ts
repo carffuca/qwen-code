@@ -40,19 +40,21 @@ export type UserShellMessage = DaemonUserShellMessage;
 /**
  * Collapse state attached to a turn's leading user-message row. A "turn" spans
  * one user message up to (but not including) the next, and when collapsed its
- * intermediate steps (thinking, tool calls, mid-turn assistant text) are hidden,
- * leaving only the prompt and the final answer. Carried on the user
- * `DisplayItem` so the row can render its own expand/collapse toggle.
+ * process (thinking, tool calls, plans, sub-agents) is hidden, leaving the
+ * prompt and every assistant answer (the model's prose, wherever it falls in the
+ * turn). Carried on the user `DisplayItem` so the row can render its own
+ * expand/collapse toggle.
  */
 export interface TurnCollapseHead {
   /** id of the turn's user message; the key used to toggle the turn. */
   turnId: string;
-  /** whether the turn's intermediate steps are currently hidden. */
+  /** whether the turn's process steps are currently hidden. */
   collapsed: boolean;
   /**
-   * Number of rows that fold into the process drawer (every row of the turn
-   * except its final answer — routine steps and key rows alike). Drives the
-   * toggle's "N steps" count; 0 means a step-less turn with no foldable rows.
+   * Number of rows that fold into the process drawer (every non-answer row of
+   * the turn — thinking, tools, plans, sub-agents, and key rows alike; assistant
+   * answer prose always stays outside). Drives the toggle's "N steps" count; 0
+   * means a turn with no foldable process rows.
    */
   hiddenCount: number;
   /**
@@ -88,6 +90,13 @@ export interface TurnCollapseHead {
   cachedTokens?: number;
   /** Number of tool calls shown in this turn. */
   toolCallCount?: number;
+  /**
+   * Whether the row immediately below the head (when expanded) is a drawer row,
+   * so the head should square its bottom and butt directly against the process
+   * band. False when the turn opens with assistant answer prose, which renders
+   * as a plain block below the (still rounded) head instead.
+   */
+  drawerStartsBelow?: boolean;
   /**
    * Prompt wall-clock (ms) for a still-running turn. Present only while the turn
    * is active; the row ticks `now - liveStartedAt` once a second so the elapsed

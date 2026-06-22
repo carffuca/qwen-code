@@ -254,10 +254,31 @@
     color-mix(in srgb, var(--accent-color) 42%, transparent);
 }
 
+/* A band that resumes below intervening answer prose stands on its own — there's
+   no toggle directly above to fuse with, so the accent rail (which existed for
+   that continuity) is dropped. The 2px is kept transparent so row text stays
+   aligned with rail-bearing bands. The tint + rounded ends carry the block. */
+.drawerDetached {
+  border-left-color: transparent;
+}
+
+/* A band that resumes below intervening answer prose: round its top and add a
+   small gap above so it reads as a fresh "process" chunk, not a clipped slab. */
+.drawerFirst {
+  padding-top: 7px;
+  border-radius: 8px 8px 0 0;
+  margin-top: 12px;
+}
+
 .drawerLast {
   padding-bottom: 7px;
   border-radius: 0 0 8px 8px;
   margin-bottom: 12px;
+}
+
+/* A single-row band (first and last of its run) rounds all four corners. */
+.drawerFirst.drawerLast {
+  border-radius: 8px;
 }
 
 /* The whole process drawer fades out together as the turn auto-collapses,

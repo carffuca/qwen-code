@@ -149,8 +149,20 @@ export type DisplayItem =
        * shared tinted band so the steps read as one bounded "process" block.
        */
       drawer?: boolean;
+      /**
+       * First row of a drawer band that does not butt against the turn head —
+       * i.e. a band that resumes after intervening answer prose. Rounds the
+       * band's top. (The first band, flush under the head, stays flat-topped.)
+       */
+      drawerFirst?: boolean;
       /** Last row of the drawer band — rounds the band's bottom. */
       drawerLast?: boolean;
+      /**
+       * Set on every row of a band that resumes after answer prose (rather than
+       * butting the turn head). Such a band drops the accent rail and renders as
+       * a self-contained tinted block, since there's no toggle above to fuse to.
+       */
+      drawerDetached?: boolean;
       /**
        * This drawer row is mid auto-collapse — kept rendered for one fade-out
        * beat before the fold removes it, so the process doesn't just blink out.
@@ -168,8 +180,12 @@ export type DisplayItem =
       timestamp?: number;
       /** Process drawer: see the message variant's `drawer`. */
       drawer?: boolean;
+      /** First row of a band resuming after answer prose — see the message variant. */
+      drawerFirst?: boolean;
       /** Last row of the drawer band — see the message variant. */
       drawerLast?: boolean;
+      /** Railless self-contained band (resumed after prose) — see the message variant. */
+      drawerDetached?: boolean;
       /** Mid auto-collapse fade-out; see the message variant. */
       collapsing?: boolean;
     };
@@ -410,20 +426,20 @@ function isAssistantAnswer(item: DisplayItem): boolean {
 }
 
 /**
- * Whether a row is a routine "step" (tool activity, plans, mid-turn assistant
- * text) as opposed to a key row (system/shell/insight: errors, cancellations,
- * command output) or the final answer. In the drawer model every non-answer row
- * folds away regardless; this only distinguishes routine steps from key rows so
- * the latter can be tallied into the summary's note badge (`noteCount`).
+ * Whether a drawered row is a routine "step" (tool activity, plans, content-less
+ * assistant rows) as opposed to a key row (system/shell/insight: errors,
+ * cancellations, command output). Assistant answers never reach here — they stay
+ * outside the drawer. Among drawered rows this only distinguishes routine steps
+ * from key rows so the latter can be tallied into the summary's note badge
+ * (`noteCount`).
  */
-function isHideableStep(item: DisplayItem, isFinalAnswer: boolean): boolean {
+function isHideableStep(item: DisplayItem): boolean {
   if (item.type === 'parallel_agents') return true;
   switch (item.message.role) {
     case 'tool_group':
     case 'plan':
-      return true;
     case 'assistant':
-      return !isFinalAnswer;
+      return true;
     case 'user':
     case 'system':
     case 'user_shell':
@@ -442,11 +458,6 @@ function isHideableStep(item: DisplayItem, isFinalAnswer: boolean): boolean {
       return false;
     }
   }
-}
-
-function isExecutionWorkStep(item: DisplayItem): boolean {
-  if (item.type === 'parallel_agents') return true;
-  return item.message.role === 'tool_group' || item.message.role === 'plan';
 }
 
 /** Wall-clock stamp of a display row, whichever variant carries it. */
@@ -495,15 +506,15 @@ export function findTurnIdForIndex(
 }
 
 /**
- * Fold each completed turn down to its prompt and final answer, hiding the
- * intermediate steps (thinking, tool calls, mid-turn assistant text) behind a
- * toggle attached to the prompt row. A turn spans one user message up to the
- * next; its "final answer" is the last assistant row carrying visible content.
- * The leading user row of every collapsible turn is tagged with a
- * `TurnCollapseHead`; when collapsed, the hidden middle rows are dropped and the
- * final answer's own thinking is stripped so only its purple-prefixed content
- * remains. Returns the original array untouched when disabled or when there is
- * nothing to collapse.
+ * Fold each completed turn down to its prompt and its assistant answers, hiding
+ * the process (thinking, tool calls, plans, sub-agents) behind a toggle attached
+ * to the prompt row. A turn spans one user message up to the next; every
+ * assistant row carrying visible prose stays outside the fold, wherever it falls
+ * in the turn — only the process and key rows go into the drawer. The leading
+ * user row of every collapsible turn is tagged with a `TurnCollapseHead`; when
+ * collapsed, the drawer rows are dropped and the surviving answers' own thinking
+ * is stripped so only their purple-prefixed content remains. Returns the
+ * original array untouched when disabled or when there is nothing to collapse.
  */
 /** Does any tool group / parallel-agents row in [start, end] own `callId`? */
 function turnOwnsCallId(
@@ -568,26 +579,11 @@ export function applyTurnCollapse(
       pendingApprovalCallId,
     );
 
-    // Final answer = last assistant-with-content row after the turn's last
-    // non-assistant step. Assistant text that is followed by a tool/plan is
-    // narration for the execution trace, not the final answer; marking it as a
-    // step immediately keeps the trace indentation stable while a turn streams.
-    let answerIdx = -1;
-    let lastNonAssistantStepIdx = start;
-    for (let i = start + 1; i <= end; i++) {
-      if (isExecutionWorkStep(items[i])) lastNonAssistantStepIdx = i;
-    }
-    for (let i = end; i > lastNonAssistantStepIdx; i--) {
-      if (isAssistantAnswer(items[i])) {
-        answerIdx = i;
-        break;
-      }
-    }
-
-    // The latest assistant answer always sits outside the drawer — including
-    // while it streams — so it never starts inside the drawer (with a left rail)
-    // and then jumps out when the turn completes.
-    const finalOutsideIdx = answerIdx;
+    // Every assistant answer (any assistant row carrying visible prose) stays
+    // outside the drawer — wherever it falls in the turn, not just the last one.
+    // The model's explanations and conclusions are never folded away; only the
+    // process (thinking, tools, plans, sub-agents) and key rows go in the drawer.
+    const staysOutside = (i: number): boolean => isAssistantAnswer(items[i]);
 
     let drawerCount = 0; // every row that goes into the drawer
     let noteCount = 0; // drawered key rows (errors/shell/system)
@@ -599,8 +595,11 @@ export function applyTurnCollapse(
     let toolCallCount = 0;
     let hasUsage = false;
     for (let i = start + 1; i <= end; i++) {
-      const hideable = isHideableStep(items[i], i === answerIdx);
-      if (i !== finalOutsideIdx) {
+      const outside = staysOutside(i);
+      // Assistant answers are outside; for the rest, `isHideableStep` separates
+      // routine steps (tools/plans/thinking) from key rows (errors/shell/system).
+      const hideable = !outside && isHideableStep(items[i]);
+      if (!outside) {
         drawerCount++;
         if (!hideable) noteCount++;
         if (stepKinds) {
@@ -611,10 +610,9 @@ export function applyTurnCollapse(
         }
       }
       toolCallCount += itemToolCallCount(items[i]);
-      // Only step rows and the final answer count toward elapsed — a late
-      // non-step row (e.g. a title-refresh system message) must not inflate it.
-      const ts =
-        hideable || i === answerIdx ? itemTimestamp(items[i]) : undefined;
+      // Step rows and answer prose count toward elapsed; a late non-step key row
+      // (e.g. a title-refresh system message) must not inflate it.
+      const ts = hideable || outside ? itemTimestamp(items[i]) : undefined;
       if (ts !== undefined) {
         lastStepTs = lastStepTs === undefined ? ts : Math.max(lastStepTs, ts);
       }
@@ -674,13 +672,18 @@ export function applyTurnCollapse(
         ...(hasUsage ? { inputTokens, outputTokens } : {}),
         ...(cachedTokens > 0 ? { cachedTokens } : {}),
         ...(toolCallCount > 0 ? { toolCallCount } : {}),
+        // The head butts against the band only when a drawer row sits directly
+        // below it; if the turn opens with answer prose, the head stays rounded.
+        ...(start + 1 <= end && !staysOutside(start + 1)
+          ? { drawerStartsBelow: true }
+          : {}),
         ...(isActiveTurn && promptTs !== undefined
           ? { liveStartedAt: promptTs }
           : {}),
       },
     });
 
-    // The final answer sits outside the fold. While collapsed its own thinking is
+    // Answer prose sits outside the fold. While collapsed its own thinking is
     // stripped so only the conclusion shows; expanded it keeps its thinking (the
     // process is on display anyway).
     const stripThinking = (item: DisplayItem): DisplayItem => {
@@ -698,33 +701,42 @@ export function applyTurnCollapse(
       return item;
     };
 
-    // Process drawer: nothing leaks out. Collapsed shows only the final answer;
-    // expanded tags every other row so it renders inside the drawer. A turn mid
-    // auto-collapse keeps emitting its drawer rows (tagged `collapsing`) for one
-    // fade-out beat before they're dropped.
+    // Process drawer: answer prose always stays out. Collapsed shows only the
+    // answer rows (thinking stripped); expanded tags every non-answer row so it
+    // renders inside the drawer. Prose interleaved between steps segments the
+    // band into runs — each run rounds its own top (unless flush under the head)
+    // and bottom. A turn mid auto-collapse keeps emitting its drawer rows
+    // (tagged `collapsing`) for one fade-out beat before they're dropped.
     const animatingCollapse = collapsed && turnId === collapsingTurnId;
     if (collapsed && !animatingCollapse) {
-      if (finalOutsideIdx >= 0)
-        result.push(stripThinking(items[finalOutsideIdx]));
-    } else {
-      // The last drawer-band row (everything but the final answer goes in the
-      // band) rounds the band's bottom; the top is flat since the band continues
-      // straight from the turn head above.
-      let lastDrawer = -1;
       for (let i = start + 1; i <= end; i++) {
-        if (i !== finalOutsideIdx) lastDrawer = i;
+        if (staysOutside(i)) result.push(stripThinking(items[i]));
       }
+    } else {
+      // A band that butts the head continues its accent rail (one fused card); a
+      // band that resumes after answer prose is "detached" — it drops the rail
+      // and stands as a self-contained tinted block. `runDetached` carries that
+      // across every row of the run, not just its first.
+      let runDetached = false;
       for (let i = start + 1; i <= end; i++) {
-        if (i === finalOutsideIdx) {
+        if (staysOutside(i)) {
           result.push(collapsed ? stripThinking(items[i]) : items[i]);
-        } else {
-          result.push({
-            ...items[i],
-            drawer: true,
-            ...(i === lastDrawer ? { drawerLast: true } : {}),
-            ...(animatingCollapse ? { collapsing: true } : {}),
-          });
+          continue;
         }
+        // Band geometry: a run's first row rounds its top unless it's the very
+        // first row under the head (which continues straight from the head); a
+        // run's last row rounds its bottom and adds the gap before what follows.
+        const prevInDrawer = i > start + 1 && !staysOutside(i - 1);
+        const nextInDrawer = i < end && !staysOutside(i + 1);
+        if (!prevInDrawer) runDetached = i !== start + 1;
+        result.push({
+          ...items[i],
+          drawer: true,
+          ...(!prevInDrawer && i !== start + 1 ? { drawerFirst: true } : {}),
+          ...(!nextInDrawer ? { drawerLast: true } : {}),
+          ...(runDetached ? { drawerDetached: true } : {}),
+          ...(animatingCollapse ? { collapsing: true } : {}),
+        });
       }
     }
   }
@@ -1504,6 +1516,8 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
             <div
               className={[
                 styles.drawerRow,
+                item.drawerDetached && styles.drawerDetached,
+                item.drawerFirst && styles.drawerFirst,
                 item.drawerLast && styles.drawerLast,
                 item.collapsing && styles.drawerRowCollapsing,
               ]
