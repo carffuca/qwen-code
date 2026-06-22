@@ -91,17 +91,17 @@
 
 .lineExpandable {
   cursor: pointer;
+  margin: -2px 0;
+  padding: 2px 0;
+  user-select: none;
+}
+
+.lineExpandable * {
+  cursor: pointer;
 }
 
 .lineExpandable:hover .lineName {
   color: var(--accent-color);
-}
-
-.lineChevron {
-  font-size: 10px;
-  color: var(--text-dimmed);
-  flex-shrink: 0;
-  margin-left: 6px;
 }
 
 .agentSummary {

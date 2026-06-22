@@ -12,7 +12,12 @@ import {
   type MutableRefObject,
 } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import type { Message, ACPToolCall, TurnCollapseHead } from '../adapters/types';
+import type {
+  CommandInfo,
+  Message,
+  ACPToolCall,
+  TurnCollapseHead,
+} from '../adapters/types';
 import type { PermissionRequest } from '../adapters/types';
 import {
   isBackgroundSubAgentToolCall,
@@ -52,6 +57,7 @@ interface MessageListProps {
   tailKey?: string;
   virtualScrollThreshold?: number;
   shellOutputMaxLines: number;
+  commands?: readonly CommandInfo[];
   /**
    * When true, scroll the tail content into view the moment it first appears
    * even if the user had scrolled up. Opt-in per caller so unrelated inline
@@ -438,6 +444,11 @@ function isHideableStep(item: DisplayItem, isFinalAnswer: boolean): boolean {
   }
 }
 
+function isExecutionWorkStep(item: DisplayItem): boolean {
+  if (item.type === 'parallel_agents') return true;
+  return item.message.role === 'tool_group' || item.message.role === 'plan';
+}
+
 /** Wall-clock stamp of a display row, whichever variant carries it. */
 function itemTimestamp(item: DisplayItem): number | undefined {
   return item.type === 'message' ? item.message.timestamp : item.timestamp;
@@ -449,14 +460,21 @@ function itemTimestamp(item: DisplayItem): number | undefined {
  * top-level assistant blocks, so summing the turn's assistant messages yields
  * its true total cost.
  */
-function itemAssistantUsage(
-  item: DisplayItem,
-):
-  | { inputTokens: number; outputTokens: number; cachedTokens?: number }
+function itemAssistantUsage(item: DisplayItem):
+  | {
+      inputTokens: number;
+      outputTokens: number;
+      cachedTokens?: number;
+    }
   | undefined {
   return item.type === 'message' && item.message.role === 'assistant'
     ? item.message.usage
     : undefined;
+}
+
+function itemToolCallCount(item: DisplayItem): number {
+  if (item.type === 'parallel_agents') return item.agents.length;
+  return item.message.role === 'tool_group' ? item.message.tools.length : 0;
 }
 
 /**
@@ -550,12 +568,16 @@ export function applyTurnCollapse(
       pendingApprovalCallId,
     );
 
-    // Final answer = last assistant-with-content row in (start, end]. On an
-    // active turn this is provisional (the latest streamed text), so it is not
-    // counted as a step — keeping a step-less reply step-less — but it is folded
-    // away with everything else when the live turn is collapsed (see below).
+    // Final answer = last assistant-with-content row after the turn's last
+    // non-assistant step. Assistant text that is followed by a tool/plan is
+    // narration for the execution trace, not the final answer; marking it as a
+    // step immediately keeps the trace indentation stable while a turn streams.
     let answerIdx = -1;
-    for (let i = end; i > start; i--) {
+    let lastNonAssistantStepIdx = start;
+    for (let i = start + 1; i <= end; i++) {
+      if (isExecutionWorkStep(items[i])) lastNonAssistantStepIdx = i;
+    }
+    for (let i = end; i > lastNonAssistantStepIdx; i--) {
       if (isAssistantAnswer(items[i])) {
         answerIdx = i;
         break;
@@ -574,6 +596,7 @@ export function applyTurnCollapse(
     let inputTokens = 0;
     let outputTokens = 0;
     let cachedTokens = 0;
+    let toolCallCount = 0;
     let hasUsage = false;
     for (let i = start + 1; i <= end; i++) {
       const hideable = isHideableStep(items[i], i === answerIdx);
@@ -587,7 +610,11 @@ export function applyTurnCollapse(
           }
         }
       }
-      const ts = itemTimestamp(items[i]);
+      toolCallCount += itemToolCallCount(items[i]);
+      // Only step rows and the final answer count toward elapsed — a late
+      // non-step row (e.g. a title-refresh system message) must not inflate it.
+      const ts =
+        hideable || i === answerIdx ? itemTimestamp(items[i]) : undefined;
       if (ts !== undefined) {
         lastStepTs = lastStepTs === undefined ? ts : Math.max(lastStepTs, ts);
       }
@@ -646,6 +673,7 @@ export function applyTurnCollapse(
         ...(elapsedMs !== undefined ? { elapsedMs } : {}),
         ...(hasUsage ? { inputTokens, outputTokens } : {}),
         ...(cachedTokens > 0 ? { cachedTokens } : {}),
+        ...(toolCallCount > 0 ? { toolCallCount } : {}),
         ...(isActiveTurn && promptTs !== undefined
           ? { liveStartedAt: promptTs }
           : {}),
@@ -778,6 +806,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
       tailKey = 'tail',
       virtualScrollThreshold = VIRTUAL_SCROLL_THRESHOLD,
       shellOutputMaxLines,
+      commands,
       autoScrollTailIntoView = false,
       showRetryHint = false,
       onRetryClick,
@@ -1510,6 +1539,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
             showRetryHint={showRetryHint}
             onRetryClick={onRetryClick}
             shellOutputMaxLines={shellOutputMaxLines}
+            commands={commands}
             collapse={item.collapse}
             onToggleCollapse={handleToggleCollapse}
           />,
@@ -1532,6 +1562,7 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
         showRetryHint,
         onRetryClick,
         shellOutputMaxLines,
+        commands,
         handleToggleCollapse,
       ],
     );

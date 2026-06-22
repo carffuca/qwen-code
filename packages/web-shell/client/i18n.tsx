@@ -775,8 +775,16 @@ const EN: Messages = {
   'turn.expand': 'Expand steps',
   'turn.cached': 'cached',
   'turn.hiddenSteps': (v) => {
+    const n = Number(v?.count ?? 0);
+    return n === 1 ? '1 step' : `${n} steps`;
+  },
+  'turn.executionSteps': (v) => {
     const n = v?.count ?? 0;
-    return `${n} step${n === 1 ? '' : 's'}`;
+    return `Execution ${n} step${n === 1 ? '' : 's'}`;
+  },
+  'turn.toolCalls': (v) => {
+    const n = v?.count ?? 0;
+    return `${n} tool call${n === 1 ? '' : 's'}`;
   },
   'turn.process': 'Process',
   'turn.kind.thinking': 'thinking',
@@ -860,10 +868,14 @@ const EN: Messages = {
   'tools.update.enable': 'Enable',
   'tools.updating': 'Updating...',
   'tool.collapse': '▲ Collapse',
+  'tool.expand': 'Expand',
+  'tool.collapseHint': 'Collapse',
   'tool.showAll': (v) => `▼ Show all (${v?.count ?? 0} lines)`,
   'tool.showLess': '▲ Show less',
   'tool.showFullLines': '▼ Show full lines',
   'tool.linesTotal': (v) => `▼ ${v?.count ?? 0} lines total`,
+  'thinking.expand': 'Expand thinking',
+  'thinking.collapse': 'Collapse thinking',
   'settings.title': 'Settings',
   'settings.loading': 'Loading settings...',
   'settings.empty': 'No settings available.',
@@ -1620,6 +1632,8 @@ const ZH: Messages = {
   'turn.parenOpen': '（',
   'turn.parenClose': '）',
   'turn.jumpToPrompt': '跳转到此提问',
+  'turn.executionSteps': (v) => `执行过程 ${v?.count ?? 0} 步`,
+  'turn.toolCalls': (v) => `工具 ${v?.count ?? 0} 次`,
   'scroll.toBottom': '跳到底部',
   'scroll.newMessages': (v) => `${Number(v?.count ?? 0)} 条新消息`,
   'tasks.title': '后台任务',
@@ -1690,10 +1704,14 @@ const ZH: Messages = {
   'tools.update.enable': '启用',
   'tools.updating': '更新中...',
   'tool.collapse': '▲ 收起',
+  'tool.expand': '展开',
+  'tool.collapseHint': '收起',
   'tool.showAll': (v) => `▼ 显示全部（${v?.count ?? 0} 行）`,
   'tool.showLess': '▲ 显示更少',
   'tool.showFullLines': '▼ 显示完整行',
   'tool.linesTotal': (v) => `▼ 共 ${v?.count ?? 0} 行`,
+  'thinking.expand': '展开思考',
+  'thinking.collapse': '收起思考',
   'welcome.defaultModel': '未知模型',
   'welcome.tagline': '你的编程伙伴',
   'welcome.label.model': '模型',

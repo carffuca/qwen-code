@@ -816,9 +816,29 @@ export const ToolLine = memo(function ToolLine({
     <div className={styles.line}>
       <div
         className={`${styles.lineMain} ${expandable ? styles.lineExpandable : ''}`}
+        title={
+          expandable
+            ? expanded
+              ? t('tool.collapseHint')
+              : t('tool.expand')
+            : undefined
+        }
+        aria-expanded={expandable ? expanded : undefined}
+        role={expandable ? 'button' : undefined}
+        tabIndex={expandable ? 0 : undefined}
         onClick={
           expandable
             ? () => {
+                userToggledRef.current = true;
+                setExpanded((value) => !value);
+              }
+            : undefined
+        }
+        onKeyDown={
+          expandable
+            ? (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
                 userToggledRef.current = true;
                 setExpanded((value) => !value);
               }

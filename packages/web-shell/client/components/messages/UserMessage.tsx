@@ -2,7 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { PromptChevron } from '../PromptChevron';
 import { isSafeImageSrc } from './Markdown';
 import { useI18n } from '../../i18n';
-import type { TurnCollapseHead } from '../../adapters/types';
+import type { CommandInfo, TurnCollapseHead } from '../../adapters/types';
 import { metricsText, processLabel } from './turnSummary';
 import styles from './UserMessage.module.css';
 
@@ -14,6 +14,7 @@ interface UserMessageImage {
 interface UserMessageProps {
   content: string;
   images?: UserMessageImage[];
+  commands?: readonly CommandInfo[];
   /** When set, renders a toggle that folds/unfolds this turn's steps. */
   collapse?: TurnCollapseHead;
   onToggleCollapse?: (turnId: string) => void;
@@ -35,9 +36,22 @@ function useNowTicker(active: boolean): number {
   return now;
 }
 
+function isKnownSlashCommandPrompt(
+  content: string,
+  commands: readonly CommandInfo[] | undefined,
+): boolean {
+  if (!commands?.length) return false;
+  const trimmed = content.trimStart();
+  if (!trimmed.startsWith('/')) return false;
+  const firstToken = trimmed.split(/\s+/, 1)[0]?.slice(1);
+  if (!firstToken) return false;
+  return commands.some((command) => command.name === firstToken);
+}
+
 export const UserMessage = memo(function UserMessage({
   content,
   images,
+  commands,
   collapse,
   onToggleCollapse,
 }: UserMessageProps) {
@@ -92,6 +106,7 @@ export const UserMessage = memo(function UserMessage({
   // the trailing metrics are inert. A step-less turn has no toggle, just metrics.
   const hasToggle = !!collapse && collapse.hiddenCount > 0;
   const metrics = collapse ? metricsText(collapse, displayElapsedMs, t) : '';
+  const isSlashCommand = isKnownSlashCommandPrompt(content, commands);
 
   // Collapsed bar reads "过程 · 思考 2 · 工具 3" from per-kind step counts, so it
   // conveys what the turn did without ballooning as tools pile up.
@@ -100,9 +115,11 @@ export const UserMessage = memo(function UserMessage({
   // A process-less turn (no foldable steps) shows no second row — its metrics
   // ride on the prompt line instead, so metrics always sit right and no
   // empty-left row appears.
-  const promptMetrics = !hasToggle ? metrics : '';
+  // Slash-command prompts (e.g. /clear) render plainly — no process toggle or
+  // metrics — matching upstream's slash-command handling.
+  const promptMetrics = !hasToggle && !isSlashCommand ? metrics : '';
   const collapseRow =
-    collapse && onToggleCollapse && hasToggle ? (
+    !isSlashCommand && collapse && onToggleCollapse && hasToggle ? (
       <div className={styles.collapseRow}>
         <button
           type="button"

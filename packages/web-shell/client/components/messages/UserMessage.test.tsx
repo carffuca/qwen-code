@@ -56,11 +56,39 @@ describe('UserMessage collapse toggle', () => {
     );
     const btn = container.querySelector('button')!;
     expect(btn).not.toBeNull();
-    expect(container.textContent).toContain('5 steps');
+    expect(container.textContent).toContain('Process (5 steps)');
     expect(btn.getAttribute('aria-expanded')).toBe('false');
   });
 
-  it('pluralizes a single step as "1 step"', () => {
+  it('hides collapse metadata for slash commands', () => {
+    const container = render(
+      <UserMessage
+        content="/review"
+        commands={[{ name: 'review', description: 'Review changes' }]}
+        collapse={head({ elapsedMs: 12_400, toolCallCount: 3 })}
+        onToggleCollapse={() => {}}
+      />,
+    );
+    expect(container.textContent).toContain('/review');
+    expect(container.textContent).not.toContain('Process (5 steps)');
+    expect(container.textContent).not.toContain('12.4s');
+    expect(container.querySelector('button')).toBeNull();
+  });
+
+  it('keeps collapse metadata for unknown slash-prefixed text', () => {
+    const container = render(
+      <UserMessage
+        content="/Users/project"
+        commands={[{ name: 'review', description: 'Review changes' }]}
+        collapse={head({ elapsedMs: 12_400, toolCallCount: 3 })}
+        onToggleCollapse={() => {}}
+      />,
+    );
+    expect(container.textContent).toContain('Process (5 steps)');
+    expect(container.textContent).toContain('12.4s');
+  });
+
+  it('pluralizes a single step as "Process (1 step)"', () => {
     const container = render(
       <UserMessage
         content="hi"
@@ -69,7 +97,7 @@ describe('UserMessage collapse toggle', () => {
       />,
     );
     const text = container.textContent ?? '';
-    expect(text).toContain('1 step');
+    expect(text).toContain('Process (1 step)');
     expect(text).not.toContain('1 steps');
   });
 
@@ -106,6 +134,7 @@ describe('UserMessage collapse toggle', () => {
         collapse={head({
           hiddenCount: 5,
           elapsedMs: 12_400,
+          toolCallCount: 3,
           inputTokens: 3100,
           outputTokens: 5100,
         })}
@@ -113,7 +142,7 @@ describe('UserMessage collapse toggle', () => {
       />,
     );
     const text = container.textContent ?? '';
-    expect(text).toContain('5 steps');
+    expect(text).toContain('Process (5 steps)');
     expect(text).toContain('12.4s');
     expect(text).toContain('↑3.1k');
     expect(text).toContain('↓5.1k');
