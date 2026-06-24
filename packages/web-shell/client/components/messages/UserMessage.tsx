@@ -187,23 +187,14 @@ export const UserMessage = memo(function UserMessage({
     </div>
   );
 
-  // When the turn is expanded AND a drawer row sits directly below, the head
-  // drops its bottom rounding/gap so it fuses into one continuous card with the
-  // process band (the band rounds the bottom). If the turn instead opens with
-  // answer prose, the head stays a self-contained rounded card.
-  const open =
-    hasToggle &&
-    !!collapse &&
-    !collapse.collapsed &&
-    collapse.drawerStartsBelow === true;
-
   // One card: the prompt on top, the process bar (toggle + metrics) fused below.
+  // The process steps below render as plain rows, so the head is always a
+  // self-contained rounded card (collapsed just tightens its bottom gap).
   return (
     <div
       className={[
         styles.turnHead,
         collapse?.collapsed ? styles.turnHeadCollapsed : '',
-        open ? styles.turnHeadOpen : '',
       ]
         .filter(Boolean)
         .join(' ')}

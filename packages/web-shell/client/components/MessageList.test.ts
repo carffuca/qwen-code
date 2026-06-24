@@ -395,7 +395,6 @@ describe('applyTurnCollapse', () => {
       collapsed: true,
       hiddenCount: 1,
       toolCallCount: 2,
-      drawerStartsBelow: true,
     });
     expect(messageRow(out[1]).collapse).toBeUndefined();
   });
@@ -415,7 +414,6 @@ describe('applyTurnCollapse', () => {
       collapsed: false,
       hiddenCount: 1,
       toolCallCount: 2,
-      drawerStartsBelow: true,
     });
   });
 
@@ -585,7 +583,6 @@ describe('applyTurnCollapse', () => {
       collapsed: true,
       hiddenCount: 2,
       toolCallCount: 4,
-      drawerStartsBelow: true,
     });
   });
 
@@ -684,37 +681,24 @@ describe('applyTurnCollapse', () => {
     // so the model's earlier explanation is never hidden behind the toggle.
     expect(rowIds(out)).toEqual(['u1', 'mid', 'a1']);
     expect(messageRow(out[0]).collapse?.hiddenCount).toBe(1);
-    // The turn opens with prose, so the head stays a rounded card (no band
-    // butting directly against it).
-    expect(messageRow(out[0]).collapse?.drawerStartsBelow).toBeUndefined();
   });
 
-  it('segments the process band around interleaved answer prose when expanded', () => {
+  it('emits interleaved process rows inline, tagged as drawer, when expanded', () => {
     const items = groupParallelAgents([
       makeUserMessage('u1'),
-      makeMultiToolGroup('g0'), // band #1 (flush under head)
-      makeAssistantMessage('mid'), // prose splits the band
-      makeMultiToolGroup('g1'), // band #2 (resumes after prose)
+      makeMultiToolGroup('g0'),
+      makeAssistantMessage('mid'), // prose between two tool groups
+      makeMultiToolGroup('g1'),
       makeAssistantMessage('a1'),
     ]);
     const out = collapseItems(items, { overrides: new Map([['u1', true]]) });
+    // Order is preserved; prose stays outside while the tool groups are tagged
+    // as folded process rows (rendered inline, no band of their own).
     expect(rowIds(out)).toEqual(['u1', 'g0', 'mid', 'g1', 'a1']);
     const byId = (id: string) => out.find((i) => rowIds([i])[0] === id)!;
-    // First band sits flush under the head: flat top (no drawerFirst), keeps the
-    // accent rail (not detached), and is the last row of its run (drawerLast).
     expect(byId('g0').drawer).toBe(true);
-    expect(byId('g0').drawerFirst).toBeUndefined();
-    expect(byId('g0').drawerLast).toBe(true);
-    expect(byId('g0').drawerDetached).toBeUndefined();
-    // Prose stays outside the drawer entirely.
-    expect(byId('mid').drawer).toBeUndefined();
-    // Second band resumes after prose: rounds both ends and drops the rail.
     expect(byId('g1').drawer).toBe(true);
-    expect(byId('g1').drawerFirst).toBe(true);
-    expect(byId('g1').drawerLast).toBe(true);
-    expect(byId('g1').drawerDetached).toBe(true);
-    // The head butts the first band, so it squares its bottom.
-    expect(messageRow(out[0]).collapse?.drawerStartsBelow).toBe(true);
+    expect(byId('mid').drawer).toBeUndefined();
   });
 
   it('hides plan rows', () => {
@@ -804,7 +788,6 @@ describe('applyTurnCollapse', () => {
       inputTokens: 3100,
       outputTokens: 5100,
       toolCallCount: 1,
-      drawerStartsBelow: true,
     });
   });
 
@@ -940,7 +923,6 @@ describe('applyTurnCollapse', () => {
       collapsed: true,
       hiddenCount: 1,
       toolCallCount: 2,
-      drawerStartsBelow: true,
     });
   });
 

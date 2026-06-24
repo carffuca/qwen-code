@@ -91,13 +91,6 @@ export interface TurnCollapseHead {
   /** Number of tool calls shown in this turn. */
   toolCallCount?: number;
   /**
-   * Whether the row immediately below the head (when expanded) is a drawer row,
-   * so the head should square its bottom and butt directly against the process
-   * band. False when the turn opens with assistant answer prose, which renders
-   * as a plain block below the (still rounded) head instead.
-   */
-  drawerStartsBelow?: boolean;
-  /**
    * Prompt wall-clock (ms) for a still-running turn. Present only while the turn
    * is active; the row ticks `now - liveStartedAt` once a second so the elapsed
    * advances smoothly instead of jumping per step. Absent once complete, when

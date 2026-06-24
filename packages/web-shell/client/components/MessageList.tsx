@@ -145,24 +145,12 @@ export type DisplayItem =
        */
       collapse?: TurnCollapseHead;
       /**
-       * Process-drawer row: an expanded turn's intermediate step, rendered on a
-       * shared tinted band so the steps read as one bounded "process" block.
+       * Process-drawer row: an expanded turn's intermediate step (thinking,
+       * tools, plans, sub-agents). Rendered inline as a plain row — the only
+       * grouping signal is the turn's process toggle above. Folded away when the
+       * turn is collapsed.
        */
       drawer?: boolean;
-      /**
-       * First row of a drawer band that does not butt against the turn head —
-       * i.e. a band that resumes after intervening answer prose. Rounds the
-       * band's top. (The first band, flush under the head, stays flat-topped.)
-       */
-      drawerFirst?: boolean;
-      /** Last row of the drawer band — rounds the band's bottom. */
-      drawerLast?: boolean;
-      /**
-       * Set on every row of a band that resumes after answer prose (rather than
-       * butting the turn head). Such a band drops the accent rail and renders as
-       * a self-contained tinted block, since there's no toggle above to fuse to.
-       */
-      drawerDetached?: boolean;
       /**
        * This drawer row is mid auto-collapse — kept rendered for one fade-out
        * beat before the fold removes it, so the process doesn't just blink out.
@@ -180,12 +168,6 @@ export type DisplayItem =
       timestamp?: number;
       /** Process drawer: see the message variant's `drawer`. */
       drawer?: boolean;
-      /** First row of a band resuming after answer prose — see the message variant. */
-      drawerFirst?: boolean;
-      /** Last row of the drawer band — see the message variant. */
-      drawerLast?: boolean;
-      /** Railless self-contained band (resumed after prose) — see the message variant. */
-      drawerDetached?: boolean;
       /** Mid auto-collapse fade-out; see the message variant. */
       collapsing?: boolean;
     };
@@ -672,11 +654,6 @@ export function applyTurnCollapse(
         ...(hasUsage ? { inputTokens, outputTokens } : {}),
         ...(cachedTokens > 0 ? { cachedTokens } : {}),
         ...(toolCallCount > 0 ? { toolCallCount } : {}),
-        // The head butts against the band only when a drawer row sits directly
-        // below it; if the turn opens with answer prose, the head stays rounded.
-        ...(start + 1 <= end && !staysOutside(start + 1)
-          ? { drawerStartsBelow: true }
-          : {}),
         ...(isActiveTurn && promptTs !== undefined
           ? { liveStartedAt: promptTs }
           : {}),
@@ -702,39 +679,24 @@ export function applyTurnCollapse(
     };
 
     // Process drawer: answer prose always stays out. Collapsed shows only the
-    // answer rows (thinking stripped); expanded tags every non-answer row so it
-    // renders inside the drawer. Prose interleaved between steps segments the
-    // band into runs — each run rounds its own top (unless flush under the head)
-    // and bottom. A turn mid auto-collapse keeps emitting its drawer rows
-    // (tagged `collapsing`) for one fade-out beat before they're dropped.
+    // answer rows (thinking stripped); expanded emits the process rows inline as
+    // plain rows (tagged `drawer` so a mid auto-collapse can fade them out for
+    // one beat via `collapsing` before the fold drops them). The steps carry no
+    // band/indent of their own — the toggle above is the only grouping signal.
     const animatingCollapse = collapsed && turnId === collapsingTurnId;
     if (collapsed && !animatingCollapse) {
       for (let i = start + 1; i <= end; i++) {
         if (staysOutside(i)) result.push(stripThinking(items[i]));
       }
     } else {
-      // A band that butts the head continues its accent rail (one fused card); a
-      // band that resumes after answer prose is "detached" — it drops the rail
-      // and stands as a self-contained tinted block. `runDetached` carries that
-      // across every row of the run, not just its first.
-      let runDetached = false;
       for (let i = start + 1; i <= end; i++) {
         if (staysOutside(i)) {
           result.push(collapsed ? stripThinking(items[i]) : items[i]);
           continue;
         }
-        // Band geometry: a run's first row rounds its top unless it's the very
-        // first row under the head (which continues straight from the head); a
-        // run's last row rounds its bottom and adds the gap before what follows.
-        const prevInDrawer = i > start + 1 && !staysOutside(i - 1);
-        const nextInDrawer = i < end && !staysOutside(i + 1);
-        if (!prevInDrawer) runDetached = i !== start + 1;
         result.push({
           ...items[i],
           drawer: true,
-          ...(!prevInDrawer && i !== start + 1 ? { drawerFirst: true } : {}),
-          ...(!nextInDrawer ? { drawerLast: true } : {}),
-          ...(runDetached ? { drawerDetached: true } : {}),
           ...(animatingCollapse ? { collapsing: true } : {}),
         });
       }
@@ -1507,25 +1469,12 @@ export const MessageList = forwardRef<MessageListHandle, MessageListProps>(
         const item = visibleItems[itemIndex];
         if (!item) return null;
 
-        // Process drawer: render an expanded turn's intermediate rows on a
-        // shared tinted band so they read as one bounded "process" block; the
-        // first / last row round the band's top / bottom.
-        const inDrawer = item.drawer === true;
+        // Process drawer rows render inline as plain rows. The only wrapper is
+        // for the auto-collapse fade-out beat (`collapsing`); otherwise the step
+        // is rendered untouched, aligned with the rest of the conversation.
         const withDrawer = (node: ReactNode) =>
-          inDrawer ? (
-            <div
-              className={[
-                styles.drawerRow,
-                item.drawerDetached && styles.drawerDetached,
-                item.drawerFirst && styles.drawerFirst,
-                item.drawerLast && styles.drawerLast,
-                item.collapsing && styles.drawerRowCollapsing,
-              ]
-                .filter(Boolean)
-                .join(' ')}
-            >
-              {node}
-            </div>
+          item.collapsing ? (
+            <div className={styles.drawerRowCollapsing}>{node}</div>
           ) : (
             node
           );
