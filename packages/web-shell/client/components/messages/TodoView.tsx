@@ -10,6 +10,7 @@ import { TodoDetailContext } from '../../App';
 import { formatTimestamp } from '../MessageTimestamp';
 import { formatDuration } from './StatsMessage';
 import { useI18n } from '../../i18n';
+import { Icon } from '../ui/Icon';
 import styles from './TodoView.module.css';
 
 function statusClass(status: TodoItem['status']): string {
@@ -46,7 +47,7 @@ export function TodoEventSummary({
         <div className={styles.summary}>
           <div className={`${styles.row} ${styles.completed}`}>
             <span className={styles.icon} aria-hidden="true">
-              ✓
+              <Icon name="check" />
             </span>
             <span className={styles.text}>{t('todo.allDone')}</span>
           </div>
@@ -61,7 +62,7 @@ export function TodoEventSummary({
       <div className={styles.summary}>
         <div className={`${styles.row} ${statusClass(current.status)}`}>
           <span className={styles.icon} aria-hidden="true">
-            {getTodoStatusIcon(current.status)}
+            <Icon {...getTodoStatusIcon(current.status)} />
           </span>
           <span className={styles.text}>{current.content}</span>
         </div>
@@ -79,9 +80,11 @@ export function TodoEventSummary({
           }`}
         >
           <span className={styles.icon} aria-hidden="true">
-            {getTodoStatusIcon(
-              event.kind === 'completed' ? 'completed' : 'in_progress',
-            )}
+            <Icon
+              {...getTodoStatusIcon(
+                event.kind === 'completed' ? 'completed' : 'in_progress',
+              )}
+            />
           </span>
           <span className={styles.text}>{event.content}</span>
         </div>
@@ -257,12 +260,12 @@ export function TodoFullList({
               </span>
             )}
             <span className={styles.icon} aria-hidden="true">
-              {getTodoStatusIcon(todo.status)}
+              <Icon {...getTodoStatusIcon(todo.status)} />
             </span>
             <span className={styles.text}>{todo.content}</span>
             {expandable && (
               <span className={styles.detailChevron} aria-hidden="true">
-                {isOpen ? '▾' : '▸'}
+                <Icon name={isOpen ? 'chevron-down' : 'chevron-right'} />
               </span>
             )}
           </>

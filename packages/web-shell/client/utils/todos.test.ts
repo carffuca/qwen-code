@@ -419,10 +419,19 @@ describe('extractTodosFromToolCall', () => {
 });
 
 describe('getTodoStatusIcon', () => {
-  it('maps each status to its glyph', () => {
-    expect(getTodoStatusIcon('completed')).toBe('●');
-    expect(getTodoStatusIcon('in_progress')).toBe('◐');
-    expect(getTodoStatusIcon('pending')).toBe('○');
+  it('maps each status to its Codicon descriptor', () => {
+    expect(getTodoStatusIcon('completed')).toEqual({
+      name: 'pass-filled',
+      spin: false,
+    });
+    expect(getTodoStatusIcon('in_progress')).toEqual({
+      name: 'loading',
+      spin: true,
+    });
+    expect(getTodoStatusIcon('pending')).toEqual({
+      name: 'circle',
+      spin: false,
+    });
   });
 });
 

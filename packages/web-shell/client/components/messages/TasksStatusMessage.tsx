@@ -9,6 +9,8 @@ import { useI18n } from '../../i18n';
 import { formatRuntime } from '../../utils/formatRuntime';
 import { createSentinelSerializer } from '../../utils/sentinelMessage';
 import { localizeToolDisplayName } from './toolFormatting';
+import { Icon } from '../ui/Icon';
+import type { CodiconName } from '../ui/codicons';
 import styles from './TasksStatusMessage.module.css';
 
 const ACTIVE_EVENT = 'web-shell:tasks-panel-active';
@@ -105,15 +107,15 @@ function statusLabel(
   }
 }
 
-function terminalStatusIcon(status: TaskStatus): string | null {
+function terminalStatusIcon(status: TaskStatus): CodiconName | null {
   switch (status) {
     case 'paused':
-      return '⏸';
+      return 'debug-pause';
     case 'completed':
-      return '✓';
+      return 'check';
     case 'failed':
     case 'cancelled':
-      return '✗';
+      return 'error';
     case 'running':
       return null;
     default:
@@ -123,19 +125,10 @@ function terminalStatusIcon(status: TaskStatus): string | null {
 
 function ChevronIcon({ expanded }: { expanded: boolean }) {
   return (
-    <svg
+    <Icon
+      name="chevron-right"
       className={`${styles.chevron} ${expanded ? styles.chevronExpanded : ''}`}
-      viewBox="0 0 16 16"
-      aria-hidden="true"
-    >
-      <path
-        d="M6 4.5 9.5 8 6 11.5"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    />
   );
 }
 
@@ -766,7 +759,8 @@ function TaskDetail({
         {terminalIcon && (
           <>
             <span className={stClass}>
-              {terminalIcon} {t(`tasks.${task.status}`)}
+              <Icon name={terminalIcon} size="0.9em" />{' '}
+              {t(`tasks.${task.status}`)}
             </span>
             <span className={styles.separator}>·</span>
           </>

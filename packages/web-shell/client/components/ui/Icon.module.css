@@ -1,0 +1,26 @@
+.icon {
+  display: inline-block;
+  flex: none;
+  /* Optical baseline alignment when sitting inline with text. */
+  vertical-align: -0.125em;
+}
+
+.spin {
+  transform-origin: center;
+  animation: icon-spin 1.5s steps(30, end) infinite;
+}
+
+@keyframes icon-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
+  }
+}

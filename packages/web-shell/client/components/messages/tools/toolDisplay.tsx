@@ -1,3 +1,4 @@
+import { Icon } from '../../ui/Icon';
 import styles from './ToolChrome.module.css';
 export {
   formatToolDisplayName,
@@ -9,17 +10,33 @@ export function StatusIcon({ status }: { status: string }) {
   switch (status) {
     case 'completed':
     case 'success':
-      return <span className={`${styles.icon} ${styles.iconDone}`}>✓</span>;
+      return (
+        <span className={`${styles.icon} ${styles.iconDone}`}>
+          <Icon name="check" />
+        </span>
+      );
     case 'failed':
     case 'error':
     case 'cancelled':
     case 'canceled':
-      return <span className={`${styles.icon} ${styles.iconError}`}>✗</span>;
+      return (
+        <span className={`${styles.icon} ${styles.iconError}`}>
+          <Icon name="error" />
+        </span>
+      );
     case 'in_progress':
     case 'running':
-      return <span className={`${styles.icon} ${styles.iconSpin}`}>⟳</span>;
+      return (
+        <span className={`${styles.icon} ${styles.iconSpin}`}>
+          <Icon name="loading" />
+        </span>
+      );
     default:
-      return <span className={`${styles.icon} ${styles.iconPending}`}>○</span>;
+      return (
+        <span className={`${styles.icon} ${styles.iconPending}`}>
+          <Icon name="circle" />
+        </span>
+      );
   }
 }
 

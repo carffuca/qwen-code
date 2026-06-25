@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { isSafeImageSrc } from './Markdown';
 import { useI18n } from '../../i18n';
+import { Icon } from '../ui/Icon';
 import styles from './UserMessage.module.css';
 
 interface UserMessageImage {
@@ -87,21 +88,12 @@ export const UserMessage = memo(function UserMessage({
             <span>
               {expanded ? t('userMessage.showLess') : t('userMessage.showMore')}
             </span>
-            <svg
+            <Icon
+              name="chevron-down"
               className={`${styles.toggleIcon} ${
                 expanded ? styles.toggleIconExpanded : ''
               }`}
-              viewBox="0 0 16 16"
-              aria-hidden="true"
-            >
-              <path
-                d="m4 6 4 4 4-4"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            />
           </button>
         )}
       </div>

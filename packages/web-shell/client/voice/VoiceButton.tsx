@@ -6,6 +6,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useWorkspace } from '@qwen-code/webui/daemon-react-sdk';
+import { Icon } from '../components/ui/Icon';
 import { useVoiceCapture } from './useVoiceCapture';
 import styles from './VoiceButton.module.css';
 
@@ -20,29 +21,10 @@ export interface VoiceButtonProps {
   disabled?: boolean;
 }
 
-const MicIcon = (): React.JSX.Element => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    aria-hidden="true"
-    fill="currentColor"
-  >
-    <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Z" />
-    <path d="M17 11a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z" />
-  </svg>
-);
+const MicIcon = (): React.JSX.Element => <Icon name="mic" size="18px" />;
 
 const StopIcon = (): React.JSX.Element => (
-  <svg
-    width="13"
-    height="13"
-    viewBox="0 0 24 24"
-    aria-hidden="true"
-    fill="currentColor"
-  >
-    <rect x="6" y="6" width="12" height="12" rx="2" />
-  </svg>
+  <Icon name="debug-stop" size="13px" />
 );
 
 function formatElapsed(ms: number): string {

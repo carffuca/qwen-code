@@ -1,4 +1,5 @@
 import { useCallback, useState, type ReactNode } from 'react';
+import { Icon } from './ui/Icon';
 import styles from './MessageTimestamp.module.css';
 
 interface MessageTimestampProps {
@@ -26,10 +27,13 @@ export function MessageTimestamp({
   const [copied, setCopied] = useState(false);
   const handleCopy = useCallback(() => {
     if (!copyText) return;
-    void navigator.clipboard?.writeText(copyText).then(() => {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    }).catch(() => {});
+    void navigator.clipboard
+      ?.writeText(copyText)
+      .then(() => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(() => {});
   }, [copyText]);
   if (timestamp === undefined && !copyText) {
     return <>{children}</>;
@@ -73,43 +77,11 @@ export function MessageTimestamp({
 }
 
 function CopyIcon() {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true">
-      <path
-        d="M5.2 4.4V3.2c0-.7.5-1.2 1.2-1.2h5.4c.7 0 1.2.5 1.2 1.2v5.4c0 .7-.5 1.2-1.2 1.2h-1.2"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.3"
-      />
-      <rect
-        x="3"
-        y="5.2"
-        width="7.8"
-        height="7.8"
-        rx="1.2"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.3"
-      />
-    </svg>
-  );
+  return <Icon name="copy" size="14px" />;
 }
 
 function CheckIcon() {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true">
-      <path
-        d="m3.5 8.3 3 3L12.8 5"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.6"
-      />
-    </svg>
-  );
+  return <Icon name="check" size="14px" />;
 }
 
 /**

@@ -31,6 +31,7 @@ import {
   getComposerTagValue,
 } from '../hooks/useComposerCore';
 import { ModeIcon } from './ModeIcon';
+import { Icon } from './ui/Icon';
 import { VoiceButton } from '../voice/VoiceButton';
 import styles from './ChatEditor.module.css';
 
@@ -144,16 +145,7 @@ const SLASH_PANEL_THEME_VARS = [
 ] as const;
 
 function SendIcon() {
-  return (
-    <svg
-      className={styles.sendIcon}
-      viewBox="0 0 16 16"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path d="M1 1L15 8L1 15V9.5L10 8L1 6.5V1Z" fill="currentColor" />
-    </svg>
-  );
+  return <Icon name="send" className={styles.sendIcon} />;
 }
 
 function StopIcon() {
@@ -161,21 +153,7 @@ function StopIcon() {
 }
 
 function QuickActionsIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      {[7, 12, 17].flatMap((y) =>
-        [7, 12, 17].map((x) => (
-          <circle
-            key={`${x}-${y}`}
-            cx={x}
-            cy={y}
-            r="1.35"
-            fill="currentColor"
-          />
-        )),
-      )}
-    </svg>
-  );
+  return <Icon name="ellipsis" />;
 }
 
 function attachComposerGlow(glowRootEl: HTMLElement, inputEl: HTMLElement) {
@@ -296,25 +274,7 @@ function ChevronDownIcon() {
 }
 
 function ModelIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M12 3.5 19.4 7.8v8.4L12 20.5l-7.4-4.3V7.8L12 3.5Z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      <path
-        d="m8.2 9.7 3.8 2.2 3.8-2.2M12 11.9v4.4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  return <Icon name="sparkle" />;
 }
 
 interface DropdownItem {
@@ -403,18 +363,7 @@ const QUICK_KEY_ITEMS: QuickKeyItem[] = [
 ];
 
 function CheckIcon() {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true">
-      <path
-        d="m3 8.3 3.1 3.1L13 4.6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  return <Icon name="check" />;
 }
 
 function getModeLabel(modeId: string, t: (key: string) => string): string {
@@ -1249,7 +1198,9 @@ export const ChatEditor = memo(
                         }}
                       >
                         <span className={styles.searchResultMarker}>
-                          {matchIndex === searchActiveIndex ? '›' : ''}
+                          {matchIndex === searchActiveIndex ? (
+                            <Icon name="chevron-right" size="0.9em" />
+                          ) : null}
                         </span>
                         <span className={styles.searchResultText}>{match}</span>
                       </button>
@@ -1293,7 +1244,7 @@ export const ChatEditor = memo(
                           core.viewRef.current?.focus();
                         }}
                       >
-                        ×
+                        <Icon name="close" size="0.85em" />
                       </button>
                     )}
                   </span>
@@ -1315,7 +1266,7 @@ export const ChatEditor = memo(
                         core.removeImage(i);
                       }}
                     >
-                      ×
+                      <Icon name="close" size="0.85em" />
                     </button>
                   </div>
                 ))}

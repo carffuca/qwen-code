@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { PermissionRequest } from '../../adapters/types';
 import { useI18n } from '../../i18n';
 import { localizeToolDisplayName } from './toolFormatting';
+import { Icon } from '../ui/Icon';
 import styles from './AskUserQuestion.module.css';
 
 interface Question {
@@ -463,7 +464,11 @@ export function AskUserQuestion({
               onMouseEnter={() => setSelectedIdx(0)}
             >
               <span className={styles.pointer}>
-                {selectedIdx === 0 ? '›' : ' '}
+                {selectedIdx === 0 ? (
+                  <Icon name="chevron-right" size="0.85em" />
+                ) : (
+                  ' '
+                )}
               </span>
               <span className={styles.optionNum}>1.</span>
               <span className={styles.optionLabel}>
@@ -478,7 +483,11 @@ export function AskUserQuestion({
               onMouseEnter={() => setSelectedIdx(1)}
             >
               <span className={styles.pointer}>
-                {selectedIdx === 1 ? '›' : ' '}
+                {selectedIdx === 1 ? (
+                  <Icon name="chevron-right" size="0.85em" />
+                ) : (
+                  ' '
+                )}
               </span>
               <span className={styles.optionNum}>2.</span>
               <span className={styles.optionLabel}>{t('askUser.cancel')}</span>
@@ -523,7 +532,13 @@ export function AskUserQuestion({
                   }}
                   onMouseEnter={() => setSelectedIdx(i)}
                 >
-                  <span className={styles.pointer}>{isActive ? '›' : ' '}</span>
+                  <span className={styles.pointer}>
+                    {isActive ? (
+                      <Icon name="chevron-right" size="0.85em" />
+                    ) : (
+                      ' '
+                    )}
+                  </span>
                   {isMulti && (
                     <span className={styles.checkbox}>
                       {isSelected ? '[✓]' : '[ ]'}
@@ -558,7 +573,11 @@ export function AskUserQuestion({
                   onMouseEnter={() => setSelectedIdx(current.options.length)}
                 >
                   <span className={styles.pointer}>
-                    {isCustomActive ? '›' : ' '}
+                    {isCustomActive ? (
+                      <Icon name="chevron-right" size="0.85em" />
+                    ) : (
+                      ' '
+                    )}
                   </span>
                   {isMulti && (
                     <span className={styles.checkbox}>

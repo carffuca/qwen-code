@@ -1,4 +1,5 @@
 import type { ACPToolCall, Message, TodoItem } from '../adapters/types';
+import type { CodiconName } from '../components/ui/codicons';
 
 /**
  * The todo tool is registered as `todo_write` on the wire, but older paths and
@@ -59,14 +60,20 @@ export function hasActiveTodos(todos: readonly TodoItem[]): boolean {
   );
 }
 
-export function getTodoStatusIcon(status: TodoItem['status']): string {
+/** Codicon descriptor for a todo status, spreadable onto `<Icon {...} />`. */
+export interface TodoStatusIcon {
+  name: CodiconName;
+  spin: boolean;
+}
+
+export function getTodoStatusIcon(status: TodoItem['status']): TodoStatusIcon {
   switch (status) {
     case 'completed':
-      return '●';
+      return { name: 'pass-filled', spin: false };
     case 'in_progress':
-      return '◐';
+      return { name: 'loading', spin: true };
     case 'pending':
-      return '○';
+      return { name: 'circle', spin: false };
   }
 }
 

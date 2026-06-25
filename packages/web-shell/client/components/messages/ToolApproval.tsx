@@ -3,6 +3,7 @@ import { isAgentTool } from '@qwen-code/webui/daemon-react-sdk';
 import type { PermissionRequest } from '../../adapters/types';
 import { useI18n } from '../../i18n';
 import { isEditableTarget } from '../../utils/dom';
+import { Icon } from '../ui/Icon';
 import styles from './ToolApproval.module.css';
 
 interface ToolApprovalProps {
@@ -261,7 +262,9 @@ export function ToolApproval({
               className={`${styles.option} ${isSelected ? styles.optionActive : ''}`}
               onClick={() => confirm(option.id)}
             >
-              <span className={styles.pointer}>{isSelected ? '›' : ' '}</span>
+              <span className={styles.pointer}>
+                {isSelected ? <Icon name="chevron-right" size="0.85em" /> : ' '}
+              </span>
               <span className={styles.num}>{i + 1}.</span>
               <span className={styles.label}>{label}</span>
             </div>

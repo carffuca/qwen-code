@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import type { TodoItem } from '../../adapters/types';
 import { getTodoStatusIcon } from '../../utils/todos';
 import { useI18n } from '../../i18n';
+import { Icon } from '../ui/Icon';
 import styles from './TodoPanel.module.css';
 
 interface TodoPanelProps {
@@ -67,7 +68,7 @@ export const TodoPanel = memo(function TodoPanel({
             className={`${styles.item} ${getStatusClass(todo.status)}`}
           >
             <span className={styles.icon} aria-hidden="true">
-              {getTodoStatusIcon(todo.status)}
+              <Icon {...getTodoStatusIcon(todo.status)} />
             </span>
             <span className={styles.content} title={todo.content}>
               {todo.content}

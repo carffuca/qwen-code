@@ -1,0 +1,94 @@
+.showcase {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.heading {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.2));
+  border-radius: var(--radius, 6px);
+}
+
+.name {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.dim {
+  opacity: 0.4;
+}
+
+.statusList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.statusList li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Color flows into the glyph through currentColor — no per-icon prop needed. */
+.ok {
+  color: var(--color-success, #2ea043);
+}
+
+.warn {
+  color: var(--color-warning, #d29922);
+}
+
+.bad {
+  color: var(--color-error, #f85149);
+}
+
+.info {
+  color: var(--color-info, #58a6ff);
+}
+
+.running {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.85;
+}
