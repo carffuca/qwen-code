@@ -101,6 +101,7 @@ import { BackgroundShellRegistry } from '../services/backgroundShellRegistry.js'
 import { WorkflowRunRegistry } from '../agents/workflow-run-registry.js';
 import { FileReadCache } from '../services/fileReadCache.js';
 import { resolveStopHookBlockingCap } from '../hooks/stopHookCap.js';
+import { buildContextUsage } from '../hooks/context-usage.js';
 import {
   DEFAULT_OTLP_ENDPOINT,
   DEFAULT_SENSITIVE_SPAN_ATTRIBUTE_MAX_LENGTH,
@@ -927,6 +928,7 @@ export interface ConfigParameters {
   importFormat?: 'tree' | 'flat';
   chatRecording?: boolean;
   chatCompression?: ChatCompressionSettings;
+  autoCompactThreshold?: number;
   interactive?: boolean;
   trustedFolder?: boolean;
   defaultFileEncoding?: FileEncodingType;
@@ -1417,6 +1419,7 @@ export class Config {
   private readonly loadMemoryFromIncludeDirectories: boolean = false;
   private readonly importFormat: 'tree' | 'flat';
   private readonly chatCompression: ChatCompressionSettings | undefined;
+  private readonly autoCompactThreshold: number | undefined;
   private readonly interactive: boolean;
   private readonly trustedFolder: boolean | undefined;
   private readonly useRipgrep: boolean;
@@ -1656,6 +1659,7 @@ export class Config {
       params.loadMemoryFromIncludeDirectories ?? false;
     this.importFormat = params.importFormat ?? 'tree';
     this.chatCompression = params.chatCompression;
+    this.autoCompactThreshold = params.autoCompactThreshold;
     this.interactive = params.interactive ?? false;
     this.trustedFolder = params.trustedFolder;
     this.skipLoopDetection = params.skipLoopDetection ?? false;
@@ -1856,9 +1860,16 @@ export class Config {
                 );
                 break;
               case 'Stop': {
+                // Extract context usage data from input with runtime validation
+                const contextUsageData = buildContextUsage(
+                  input['context_limit'] as number | undefined,
+                  (input['input_tokens'] as number | undefined) ?? 0,
+                );
+
                 const stopResult = await hookSystem.fireStopEvent(
                   (input['stop_hook_active'] as boolean) || false,
                   (input['last_assistant_message'] as string) || '',
+                  contextUsageData,
                   signal,
                 );
                 result = stopResult.finalOutput
@@ -4015,6 +4026,23 @@ export class Config {
   }
 
   /**
+   * Snapshot the runtime-only MCP servers added via `addRuntimeMcpServer`.
+   * Returns a shallow copy so callers can't mutate the private map.
+   *
+   * Reverse tool channel (issue #5626): a per-session Config built by
+   * `newSessionConfig` is independent from the bootstrap/workspace Config and
+   * never re-reads runtime additions (they live outside the settings layer
+   * `loadCliConfig` reloads). The daemon uses this getter to propagate the
+   * bootstrap Config's runtime MCP servers into a freshly created session
+   * Config so a session created AFTER a client MCP server was registered still
+   * discovers the client-hosted tools. Empty when nothing was runtime-added,
+   * so the inheritance step is a no-op in the common case.
+   */
+  getRuntimeMcpServers(): Record<string, MCPServerConfig> {
+    return Object.fromEntries(this.runtimeMcpServers);
+  }
+
+  /**
    * Remove a runtime-only MCP server previously added via
    * `addRuntimeMcpServer`. Returns `true` if the entry existed and was
    * removed, `false` otherwise.
@@ -5172,6 +5200,14 @@ export class Config {
 
   getChatCompression(): ChatCompressionSettings | undefined {
     return this.chatCompression;
+  }
+
+  getAutoCompactThreshold(): number | undefined {
+    const threshold = this.autoCompactThreshold;
+    if (typeof threshold === 'number' && threshold > 0 && threshold <= 1) {
+      return threshold;
+    }
+    return undefined;
   }
 
   isInteractive(): boolean {

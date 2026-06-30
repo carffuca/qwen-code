@@ -32,6 +32,7 @@ import {
 } from '../hooks/useComposerCore';
 import { ModeIcon } from './ModeIcon';
 import { getModelDisplayName } from '../utils/modelDisplay';
+import { ESC_CANCEL_CONFIRM_WINDOW_MS } from '../utils/escapeIntent';
 import { VoiceButton } from '../voice/VoiceButton';
 import styles from './ChatEditor.module.css';
 
@@ -52,6 +53,8 @@ interface ChatEditorProps {
   onToggleShortcuts?: () => void;
   onCancel?: () => void;
   isRunning?: boolean;
+  /** First Esc armed a cancel — the send button shows an "Esc to stop" hint. */
+  cancelArmed?: boolean;
   disabled?: boolean;
   placeholderText?: string;
   commands: CommandInfo[];
@@ -59,7 +62,6 @@ interface ChatEditorProps {
   slashCommandCategoryOrder?: CommandDisplayCategoryOrder;
   queuedMessages?: string[];
   onPopQueuedMessages?: () => string | null;
-  onClearQueuedMessages?: () => boolean;
   currentMode?: string;
   currentModel?: string;
   chatWidthMode?: '1000' | 'wide';
@@ -849,6 +851,7 @@ export const ChatEditor = memo(
       onToggleShortcuts,
       onCancel,
       isRunning = false,
+      cancelArmed = false,
       disabled = false,
       placeholderText = 'Type a message...',
       commands,
@@ -856,7 +859,6 @@ export const ChatEditor = memo(
       slashCommandCategoryOrder,
       queuedMessages = [],
       onPopQueuedMessages,
-      onClearQueuedMessages,
       currentMode = 'default',
       currentModel = '',
       chatWidthMode = '1000',
@@ -888,7 +890,6 @@ export const ChatEditor = memo(
       slashCommandCategoryOrder,
       queuedMessages,
       onPopQueuedMessages,
-      onClearQueuedMessages,
       currentMode,
       onFocusFooter,
       dialogOpen,
@@ -1550,11 +1551,20 @@ export const ChatEditor = memo(
                 <button
                   className={
                     isRunning
-                      ? `${styles.sendBtn} ${styles.sendBtnRunning}`
+                      ? `${styles.sendBtn} ${styles.sendBtnRunning}${
+                          cancelArmed ? ` ${styles.sendBtnArmed}` : ''
+                        }`
                       : styles.sendBtn
                   }
                   disabled={
                     isRunning ? !onCancel : core.disabled || !core.hasContent
+                  }
+                  style={
+                    isRunning && cancelArmed
+                      ? ({
+                          '--esc-countdown-duration': `${ESC_CANCEL_CONFIRM_WINDOW_MS}ms`,
+                        } as CSSProperties)
+                      : undefined
                   }
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1564,10 +1574,38 @@ export const ChatEditor = memo(
                     }
                     core.submitText();
                   }}
-                  aria-label={isRunning ? t('stream.cancel') : t('editor.send')}
+                  aria-label={
+                    isRunning
+                      ? cancelArmed
+                        ? t('stream.cancelArmed')
+                        : t('stream.cancel')
+                      : t('editor.send')
+                  }
+                  title={
+                    isRunning && cancelArmed
+                      ? t('stream.cancelArmed')
+                      : undefined
+                  }
                 >
-                  {isRunning ? <StopIcon /> : <SendIcon />}
+                  {isRunning ? (
+                    cancelArmed ? (
+                      <span className={styles.escLabel} aria-hidden="true">
+                        Esc
+                      </span>
+                    ) : (
+                      <StopIcon />
+                    )
+                  ) : (
+                    <SendIcon />
+                  )}
                 </button>
+                <span
+                  role="status"
+                  aria-live="polite"
+                  className={styles.srOnly}
+                >
+                  {isRunning && cancelArmed ? t('stream.cancelArmed') : ''}
+                </span>
               </div>
             </div>
           </div>
